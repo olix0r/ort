@@ -26,8 +26,48 @@ pub struct Spec {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Status {
-    is_bad: bool,
+pub enum Status {
+    Running,
+    Failed { message: String },
+    Complete { report: Report },
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Report {
+    run_type: String,
+    labels: String,
+    num_threads: u32,
+    duration_histogram: Histogram,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Histogram {
+    count: u32,
+    min: f32,
+    max: f32,
+    sum: f32,
+    avg: f32,
+    std_dev: f32,
+    data: Vec<Bucket>,
+    percentiles: Vec<Percentile>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Bucket {
+    start: f32,
+    end: f32,
+    percent: f32,
+    count: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Percentile {
+    percentile: f32,
+    value: f32,
 }
 
 struct Ctx {
