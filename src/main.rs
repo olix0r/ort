@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::sync::Mutex;
+use tracing::{info, warn};
 
 #[derive(CustomResource, Clone, Debug, Deserialize, Serialize)]
 #[kube(
@@ -71,7 +72,7 @@ struct Percentile {
 }
 
 struct Ctx {
-    client: kube::Client,
+    //client: kube::Client,
     state: Mutex<State>,
 }
 
@@ -81,6 +82,8 @@ struct State {
 
 #[tokio::main]
 async fn main() -> Result<(), kube::Error> {
+    tracing_subscriber::fmt::init();
+
     let ns = std::env::var("NAMESPACE")
         .ok()
         .filter(|ns| ns.is_empty())
@@ -93,7 +96,7 @@ async fn main() -> Result<(), kube::Error> {
     let _pods_api = kube::Api::<Pod>::namespaced(client.clone(), &ns);
 
     let ctx = Arc::new(Ctx {
-        client,
+        //client,
         state: Mutex::new(State {
             active: IndexMap::default(),
         }),
@@ -106,34 +109,33 @@ async fn main() -> Result<(), kube::Error> {
         let mut benches_stream = benches_api.watch(&benches_params, &revision).await?.boxed();
         while let Some(ev) = benches_stream.try_next().await? {
             match ev {
-                kube::api::WatchEvent::Added(b) => {
-                    if let Some(rv) = kube::api::Meta::resource_ver(&b) {
+                kube::api::WatchEvent::Added(bench) => {
+                    if let Some(rv) = kube::api::Meta::resource_ver(&bench) {
                         revision = rv;
                     }
-                    let name = kube::api::Meta::name(&b);
-                    ctx.state.lock().await.active.insert(name, b);
-                    let _ = ctx.client;
+                    let name = kube::api::Meta::name(&bench);
+                    info!(?bench, %revision, "Added");
+                    ctx.state.lock().await.active.insert(name, bench);
                 }
-                kube::api::WatchEvent::Modified(b) => unimplemented!("Modified {:?}", b),
-                kube::api::WatchEvent::Deleted(b) => unimplemented!("Deleted {:?}", b),
-                kube::api::WatchEvent::Bookmark(_) => unimplemented!("Bookmark"),
-                kube::api::WatchEvent::Error(e) => {
-                    eprintln!("{}", e);
+                kube::api::WatchEvent::Modified(bench) => {
+                    if let Some(rv) = kube::api::Meta::resource_ver(&bench) {
+                        revision = rv;
+                    }
+                    info!(?bench, %revision, "Modified");
+                }
+                kube::api::WatchEvent::Deleted(bench) => {
+                    if let Some(rv) = kube::api::Meta::resource_ver(&bench) {
+                        revision = rv;
+                    }
+                    info!(?bench, %revision, "Deleted");
+                }
+                kube::api::WatchEvent::Bookmark(_) => {
+                    info!("Ignoring bookmark");
+                }
+                kube::api::WatchEvent::Error(error) => {
+                    warn!(%error);
                 }
             }
         }
     }
 }
-
-// === Error ===
-
-#[derive(Debug)]
-pub enum Error {}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {}
-    }
-}
-
-impl std::error::Error for Error {}
