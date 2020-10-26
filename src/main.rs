@@ -3,7 +3,7 @@
 
 use futures::prelude::*;
 use indexmap::IndexMap;
-use k8s_openapi::api::core::v1::{Pod, Service};
+use k8s_openapi::api::core::v1::{Pod, PodTemplateSpec, Service};
 use kube::CustomResource;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -18,28 +18,14 @@ use tokio::sync::Mutex;
     namespaced,
     status = "Status"
 )]
+#[serde(rename_all = "camelCase")]
 pub struct Spec {
-    load: LoadSpec,
-    server: ServerSpec,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct Metadata {
-    annotations: HashMap<String, String>,
-    labels: HashMap<String, String>,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct LoadSpec {
-    metadata: Metadata,
-}
-
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-pub struct ServerSpec {
-    metadata: Metadata,
+    load_template: PodTemplateSpec,
+    server_template: PodTemplateSpec,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Status {
     is_bad: bool,
 }
@@ -97,8 +83,6 @@ async fn main() -> Result<(), kube::Error> {
             }
         }
     }
-
-    Ok(())
 }
 
 // === Error ===
