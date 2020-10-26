@@ -106,6 +106,7 @@ async fn main() -> Result<(), kube::Error> {
 
     loop {
         let benches_params = kube::api::ListParams::default();
+        info!(%revision, "Watching benches");
         let mut benches_stream = benches_api.watch(&benches_params, &revision).await?.boxed();
         while let Some(ev) = benches_stream.try_next().await? {
             match ev {
@@ -114,28 +115,37 @@ async fn main() -> Result<(), kube::Error> {
                         revision = rv;
                     }
                     let name = kube::api::Meta::name(&bench);
-                    info!(?bench, %revision, "Added");
-                    ctx.state.lock().await.active.insert(name, bench);
+                    let mut state = ctx.state.lock().await;
+                    state.active.insert(name.clone(), bench);
+                    info!(%name, %revision, active = %state.active.len(), "Added");
                 }
                 kube::api::WatchEvent::Modified(bench) => {
                     if let Some(rv) = kube::api::Meta::resource_ver(&bench) {
                         revision = rv;
                     }
-                    info!(?bench, %revision, "Modified");
+                    let name =  kube::api::Meta::name(&bench);
+                    let mut state = ctx.state.lock().await;
+                    state.active.insert(name.clone(), bench);
+                    info!(%name, %revision, active = %state.active.len(), "Modified");
                 }
                 kube::api::WatchEvent::Deleted(bench) => {
                     if let Some(rv) = kube::api::Meta::resource_ver(&bench) {
                         revision = rv;
                     }
-                    info!(?bench, %revision, "Deleted");
+                    let name = kube::api::Meta::name(&bench);
+                    let mut state = ctx.state.lock().await;
+                    state.active.remove(&name);
+                    info!(%name, %revision, active = %state.active.len(), "Deleted");
                 }
-                kube::api::WatchEvent::Bookmark(_) => {
-                    info!("Ignoring bookmark");
+                kube::api::WatchEvent::Bookmark(b) => {
+                    revision = b.metadata.resource_version;
                 }
                 kube::api::WatchEvent::Error(error) => {
                     warn!(%error);
+                    break;
                 }
             }
         }
+        info!("Stream completed");
     }
 }

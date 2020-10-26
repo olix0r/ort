@@ -1,0 +1,20 @@
+---
+apiVersion: ortiofay.olix0r.net/v1alpha1
+kind: Bench
+metadata:
+  namespace: default
+  name: example
+spec:
+  loadTemplate:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+    spec:
+      containers: []
+  serverTemplate:
+    metadata:
+      annotations:
+        linkerd.io/inject: enabled
+    spec:
+      containers: []
+
