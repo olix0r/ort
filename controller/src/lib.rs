@@ -12,7 +12,7 @@ use tracing::{info, warn};
 #[derive(StructOpt)]
 #[structopt(about = "Kubernetes controller")]
 pub struct Controller {
-    #[structopt(short, long, name = "NAMESPACE", default_value = "default")]
+    #[structopt(short, long, env, default_value = "default")]
     namespace: String,
 }
 

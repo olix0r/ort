@@ -938,6 +938,7 @@ version = "0.1.0"
 dependencies = [
  "ortiofay-controller",
  "ortiofay-load",
+ "ortiofay-server",
  "structopt",
  "tokio",
  "tracing-subscriber",
@@ -966,9 +967,14 @@ dependencies = [
  "futures",
  "http",
  "hyper",
+ "prost",
+ "prost-types",
  "structopt",
  "tokio",
+ "tonic",
+ "tonic-build",
  "tracing",
+ "tracing-futures",
 ]
 
 [[package]]

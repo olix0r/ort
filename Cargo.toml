@@ -16,6 +16,7 @@ publish = false
 [dependencies]
 ortiofay-controller = { path = "./controller" }
 ortiofay-load = { path = "./load" }
+ortiofay-server = { path = "./server" }
 structopt = "0.3"
 tokio = { version = "0.2", features = ["macros"] }
 tracing-subscriber = "0.2"

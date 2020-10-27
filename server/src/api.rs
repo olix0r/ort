@@ -25,6 +25,8 @@ impl proto::ortiofay_server::Ortiofay for Api {
         &self,
         req: tonic::Request<proto::ResponseSpec>,
     ) -> Result<tonic::Response<proto::ResponseReply>, tonic::Status> {
+        use proto::response_spec as spec;
+
         let proto::ResponseSpec {
             latency,
             result,
@@ -38,17 +40,14 @@ impl proto::ortiofay_server::Ortiofay for Api {
         }
 
         match result {
-            Some(proto::response_spec::Result::Success(proto::response_spec::Success { size })) => {
+            None => Ok(tonic::Response::new(proto::ResponseReply::default())),
+            Some(spec::Result::Success(spec::Success { size })) => {
                 let mut data = Vec::with_capacity(size.try_into().unwrap_or(0));
                 self.rng.clone().fill_bytes(&mut data);
                 Ok(tonic::Response::new(proto::ResponseReply { data }))
             }
-            Some(proto::response_spec::Result::Error(proto::response_spec::Error {
-                code,
-                message,
-            })) => {
+            Some(spec::Result::Error(spec::Error { code, message })) => {
                 let code = match code {
-                    0 => tonic::Code::Ok,
                     1 => tonic::Code::Cancelled,
                     2 => tonic::Code::Unknown,
                     3 => tonic::Code::InvalidArgument,
@@ -69,10 +68,6 @@ impl proto::ortiofay_server::Ortiofay for Api {
                 };
                 Err(tonic::Status::new(code, message))
             }
-            None => Err(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "No result specified",
-            )),
         }
     }
 }
