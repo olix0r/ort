@@ -10,9 +10,9 @@ use tokio::sync::Mutex;
 use tracing::{info, warn};
 
 #[derive(StructOpt)]
-#[structopt(about = "Controller")]
+#[structopt(about = "Kubernetes controller")]
 pub struct Controller {
-    #[structopt(short, long, default_value = "default")]
+    #[structopt(short, long, name = "NAMESPACE", default_value = "default")]
     namespace: String,
 }
 
@@ -42,14 +42,16 @@ impl Controller {
         });
 
         let mut revision = "0".to_string();
-
         loop {
             let benches_params = kube::api::ListParams::default();
             info!(%revision, "Watching benches");
             let mut benches_stream = benches_api.watch(&benches_params, &revision).await?.boxed();
-            while let Some(ev) = benches_stream.try_next().await? {
+            while let Some(ev) = benches_stream.next().await {
                 match ev {
-                    kube::api::WatchEvent::Added(bench) => {
+                    Err(error) => {
+                        warn!(?error);
+                    }
+                    Ok(kube::api::WatchEvent::Added(bench)) => {
                         if let Some(rv) = kube::api::Meta::resource_ver(&bench) {
                             revision = rv;
                         }
@@ -58,7 +60,7 @@ impl Controller {
                         state.active.insert(name.clone(), bench);
                         info!(%name, %revision, active = %state.active.len(), "Added");
                     }
-                    kube::api::WatchEvent::Modified(bench) => {
+                    Ok(kube::api::WatchEvent::Modified(bench)) => {
                         if let Some(rv) = kube::api::Meta::resource_ver(&bench) {
                             revision = rv;
                         }
@@ -67,7 +69,7 @@ impl Controller {
                         state.active.insert(name.clone(), bench);
                         info!(%name, %revision, active = %state.active.len(), "Modified");
                     }
-                    kube::api::WatchEvent::Deleted(bench) => {
+                    Ok(kube::api::WatchEvent::Deleted(bench)) => {
                         if let Some(rv) = kube::api::Meta::resource_ver(&bench) {
                             revision = rv;
                         }
@@ -76,10 +78,10 @@ impl Controller {
                         state.active.remove(&name);
                         info!(%name, %revision, active = %state.active.len(), "Deleted");
                     }
-                    kube::api::WatchEvent::Bookmark(b) => {
+                    Ok(kube::api::WatchEvent::Bookmark(b)) => {
                         revision = b.metadata.resource_version;
                     }
-                    kube::api::WatchEvent::Error(error) => {
+                    Ok(kube::api::WatchEvent::Error(error)) => {
                         warn!(%error);
                         break;
                     }

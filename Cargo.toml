@@ -3,6 +3,7 @@ members = [
     ".",
     "controller",
     "load",
+    "server",
 ]
 
 [package]
