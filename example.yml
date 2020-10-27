@@ -5,16 +5,18 @@ metadata:
   namespace: default
   name: example
 spec:
-  loadTemplate:
+  load:
     metadata:
       annotations:
         linkerd.io/inject: enabled
     spec:
-      containers: []
-  serverTemplate:
+      requestsPerSecond: 10000
+      totalRequests: 1000000
+      concurrency: 10
+  server:
     metadata:
       annotations:
         linkerd.io/inject: enabled
     spec:
-      containers: []
+      replicas: 3
 
