@@ -1,5 +1,6 @@
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Semaphore;
+use tracing::debug;
 
 #[derive(Copy, Clone)]
 pub struct RateLimit(Option<Inner>);
@@ -56,7 +57,9 @@ impl RateLimit {
                 }
 
                 // Refill the semaphore up to `requests`.
-                semaphore.add_permits(requests - semaphore.available_permits());
+                let permits = requests - semaphore.available_permits();
+                debug!(permits, "Refilling rate limit");
+                semaphore.add_permits(permits);
             }
         });
 

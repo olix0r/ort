@@ -1,7 +1,7 @@
 use crate::{proto, RateLimit};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
-use tracing::debug_span;
+use tracing::{debug, debug_span};
 use tracing_futures::Instrument;
 
 #[async_trait::async_trait]
@@ -49,6 +49,7 @@ impl Runner {
         if clients == 0 || streams == 0 {
             return;
         }
+        debug!(clients, streams, "Running");
 
         let limit = rate_limit.spawn();
 
@@ -63,6 +64,8 @@ impl Runner {
                     loop {
                         let permits =
                             (streams.clone().acquire_owned().await, limit.acquire().await);
+                        debug!("Acquired permits");
+
                         let mut client = client.clone();
                         tokio::spawn(
                             async move {
@@ -74,7 +77,9 @@ impl Runner {
                                     ..Default::default()
                                 };
 
+                                debug!("Sending request");
                                 let _ = client.get(spec).await;
+                                debug!("Request complete");
 
                                 drop(permits);
                             }

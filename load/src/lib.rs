@@ -20,34 +20,40 @@ mod proto {
 #[derive(Clone, Debug, StructOpt)]
 #[structopt(about = "Load generator")]
 pub struct Load {
+    #[structopt(short, long, parse(try_from_str), default_value = "0.0.0.0:8000")]
+    admin_addr: SocketAddr,
+
     #[structopt(long, default_value = "0")]
     request_limit: usize,
 
     #[structopt(long, parse(try_from_str = parse_duration), default_value = "1s")]
     request_limit_window: Duration,
 
-    #[structopt(short, long, parse(try_from_str), default_value = "0.0.0.0:8000")]
-    admin_addr: SocketAddr,
+    #[structopt(short, long, default_value = "1")]
+    clients: usize,
 
-    #[structopt(subcommand)]
-    flavor: Flavor,
+    #[structopt(short, long, default_value = "1")]
+    streams: usize,
+
+    #[structopt(parse(try_from_str = Target::parse))]
+    target: Target,
 }
 
-#[derive(Clone, Debug, StructOpt)]
-#[structopt()]
-enum Flavor {
-    // // Generate HTTP/1.1 load
-    // Http {},
-    // Generate gRPC load
-    Grpc {
-        #[structopt(short, long, default_value = "1")]
-        connections: usize,
+#[derive(Clone, Debug)]
+enum Target {
+    Grpc(http::Uri),
+}
 
-        #[structopt(short, long, default_value = "1")]
-        streams: usize,
+impl Target {
+    fn parse(s: &str) -> Result<Target, Box<dyn std::error::Error + 'static>> {
+        use std::str::FromStr;
 
-        target: http::Uri,
-    },
+        let uri = http::Uri::from_str(s)?;
+        match uri.scheme_str() {
+            Some("grpc") | None => Ok(Target::Grpc(uri)),
+            Some(scheme) => Err(UnsupportedScheme(scheme.to_string()).into()),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -87,43 +93,54 @@ impl runner::Client for Grpc {
     }
 }
 
+#[derive(Debug)]
+struct UnsupportedScheme(String);
+
+impl std::fmt::Display for UnsupportedScheme {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Unsupported scheme: {}", self.0)
+    }
+}
+
+impl std::error::Error for UnsupportedScheme {}
+
 impl Load {
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
-        match self.flavor {
-            Flavor::Grpc {
-                connections,
-                streams,
-                target,
-            } => {
-                if connections == 0 || streams == 0 {
-                    return Ok(());
-                }
+        let Self {
+            admin_addr,
+            clients,
+            streams,
+            request_limit,
+            request_limit_window,
+            target: Target::Grpc(target),
+        } = self;
 
-                let connect = MakeGrpc {
-                    target,
-                    backoff: Duration::from_secs(1),
-                };
-
-                let limit = RateLimit::new(self.request_limit, self.request_limit_window);
-                Runner::new(connections, streams, limit).run(connect).await;
-
-                let admin = Admin;
-                let admin_addr = self.admin_addr;
-                tokio::spawn(
-                    async move {
-                        admin
-                            .serve(admin_addr)
-                            .await
-                            .expect("Admin server must not fail")
-                    }
-                    .instrument(debug_span!("admin")),
-                );
-
-                signal(SignalKind::terminate())?.recv().await;
-
-                Ok(())
-            }
+        if clients == 0 || streams == 0 {
+            return Ok(());
         }
+
+        let connect = MakeGrpc {
+            target,
+            backoff: Duration::from_secs(1),
+        };
+
+        let limit = RateLimit::new(request_limit, request_limit_window);
+        Runner::new(clients, streams, limit).run(connect).await;
+
+        let admin = Admin;
+        tokio::spawn(
+            async move {
+                admin
+                    .serve(admin_addr)
+                    .await
+                    .expect("Admin server must not fail")
+            }
+            .instrument(debug_span!("admin")),
+        );
+
+        signal(SignalKind::terminate())?.recv().await;
+
+        Ok(())
     }
 }
 
