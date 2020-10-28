@@ -7,6 +7,7 @@ use k8s_openapi::api::core::v1::{Pod, Service};
 use std::sync::Arc;
 use structopt::StructOpt;
 use tokio::sync::Mutex;
+use tokio_compat_02::FutureExt;
 use tracing::{info, warn};
 
 #[derive(StructOpt)]
@@ -28,7 +29,7 @@ struct State {
 impl Controller {
     pub async fn run(self) -> Result<(), kube::Error> {
         let Self { namespace } = self;
-        let client = kube::Client::try_default().await?;
+        let client = kube::Client::try_default().compat().await?;
 
         let benches_api = kube::Api::<Bench>::namespaced(client.clone(), &namespace);
         let _svc_api = kube::Api::<Service>::namespaced(client.clone(), &namespace);
@@ -45,8 +46,8 @@ impl Controller {
         loop {
             let benches_params = kube::api::ListParams::default();
             info!(%revision, "Watching benches");
-            let mut benches_stream = benches_api.watch(&benches_params, &revision).await?.boxed();
-            while let Some(ev) = benches_stream.next().await {
+            let mut benches_stream = benches_api.watch(&benches_params, &revision).compat().await?.boxed();
+            while let Some(ev) = benches_stream.next().compat().await {
                 match ev {
                     Err(error) => {
                         warn!(?error);

@@ -1,8 +1,8 @@
-use std::{
-    sync::{Arc, Weak},
-    time::Duration,
+use std::sync::{Arc, Weak};
+use tokio::{
+    sync::Semaphore,
+    time::{interval_at, Duration, Instant},
 };
-use tokio::sync::Semaphore;
 use tracing::debug;
 
 #[derive(Copy, Clone)]
@@ -56,9 +56,10 @@ impl RateLimit {
 
 impl Inner {
     async fn run(self, weak: Weak<Semaphore>) {
+        let mut interval = interval_at(Instant::now() + self.window, self.window);
         loop {
             // Wait for the window to expire befor adding more permits.
-            tokio::time::delay_for(self.window).await;
+            interval.tick().await;
 
             // Refill the semaphore up to `requests`. If all of the acquire handles have been
             // dropped, stop running.

@@ -17,6 +17,7 @@ use tokio::{
     signal::unix::{signal, SignalKind},
     sync::RwLock,
 };
+use tokio_compat_02::FutureExt;
 use tracing::debug_span;
 use tracing_futures::Instrument;
 
@@ -102,6 +103,7 @@ impl Load {
             async move {
                 admin
                     .serve(admin_addr)
+                    .compat()
                     .await
                     .expect("Admin server must not fail")
             }

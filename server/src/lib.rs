@@ -4,6 +4,7 @@ mod api;
 
 use std::net::SocketAddr;
 use structopt::StructOpt;
+use tokio_compat_02::FutureExt;
 
 #[derive(Clone, Debug, StructOpt)]
 #[structopt(about = "Load target")]
@@ -19,6 +20,7 @@ impl Server {
         tonic::transport::Server::builder()
             .add_service(api::Api::server())
             .serve(self.grpc_addr)
+            .compat()
             .await
     }
 }

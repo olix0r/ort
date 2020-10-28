@@ -10,14 +10,14 @@ publish = false
 rustfmt = ["tonic-build/rustfmt"]
 
 [dependencies]
-futures = "0.3"
 http = "0.2"
 hyper = "0.13.3"
 prost = "0.6"
 prost-types = "0.6"
 rand = { version = "0.7", features = ["small_rng"] }
 structopt = "0.3"
-tokio = { version = "0.2", features = ["rt-threaded", "time"] }
+tokio = { version = "0.3", features = ["time"] }
+tokio-compat-02 = "0.1"
 tonic = { version = "0.3", default-features = false, features = ["prost", "codegen", "transport"] }
 tracing = "0.1"
 
