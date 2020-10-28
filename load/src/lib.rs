@@ -4,6 +4,7 @@ mod admin;
 mod grpc;
 mod metrics;
 mod rate_limit;
+mod report;
 mod runner;
 
 use self::{
@@ -46,6 +47,8 @@ pub struct Load {
     #[structopt(long, parse(try_from_str = parse_duration), default_value = "1s")]
     request_limit_window: Duration,
 
+    // #[structopt(long)]
+    // total_requests: Option<usize>,
     #[structopt(short, long, default_value = "1")]
     clients: usize,
 
@@ -76,13 +79,16 @@ impl Load {
             return Ok(());
         }
 
+        let histogram = hdrhistogram::Histogram::new(3).unwrap().into_sync();
+        let recorder = histogram.recorder();
         tokio::spawn(async move {
-            let connect = MakeMetrics::new(MakeGrpc::new(target, Duration::from_secs(1)));
+            let connect = MakeGrpc::new(target, Duration::from_secs(1));
+            let connect = MakeMetrics::new(connect, recorder);
             let limit = RateLimit::new(request_limit, request_limit_window);
             Runner::new(clients, streams, limit).run(connect).await
         });
 
-        let admin = Admin::default();
+        let admin = Admin::new(histogram);
         tokio::spawn(
             async move {
                 admin

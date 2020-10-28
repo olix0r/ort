@@ -56,9 +56,6 @@ pub enum Status {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Report {
-    run_type: String,
-    labels: String,
-    num_threads: u32,
     duration_histogram: Histogram,
 }
 

@@ -1026,6 +1026,8 @@ dependencies = [
  "prost",
  "prost-types",
  "regex",
+ "serde",
+ "serde_json",
  "structopt",
  "tokio",
  "tonic",

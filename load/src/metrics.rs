@@ -1,8 +1,10 @@
 use crate::{proto, Client, MakeClient};
+use hdrhistogram::sync::Recorder;
 
 #[derive(Clone)]
 pub struct MakeMetrics<M> {
     inner: M,
+    recorder: Recorder<u64>,
 }
 
 #[derive(Clone)]
@@ -11,8 +13,8 @@ pub struct Metrics<C> {
 }
 
 impl<M> MakeMetrics<M> {
-    pub fn new(inner: M) -> Self {
-        Self { inner }
+    pub fn new(inner: M, recorder: Recorder<u64>) -> Self {
+        Self { inner, recorder }
     }
 }
 
