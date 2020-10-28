@@ -1,22 +1,24 @@
 use crate::{proto, Client, MakeClient};
-use hdrhistogram::sync::Recorder;
-use std::time::Instant;
+use hdrhistogram as hdr;
+use std::{sync::Arc, time::Instant};
+use tokio::sync::RwLock;
+use tracing::debug;
 
 #[derive(Clone)]
 pub struct MakeMetrics<M> {
     inner: M,
-    recorder: Recorder<u64>,
+    histogram: Arc<RwLock<hdr::Histogram<u64>>>,
 }
 
 #[derive(Clone)]
 pub struct Metrics<C> {
     inner: C,
-    recorder: Recorder<u64>,
+    histogram: Arc<RwLock<hdr::Histogram<u64>>>,
 }
 
 impl<M> MakeMetrics<M> {
-    pub fn new(inner: M, recorder: Recorder<u64>) -> Self {
-        Self { inner, recorder }
+    pub fn new(inner: M, histogram: Arc<RwLock<hdr::Histogram<u64>>>) -> Self {
+        Self { inner, histogram }
     }
 }
 
@@ -30,8 +32,8 @@ where
 
     async fn make_client(&mut self) -> Self::Client {
         let inner = self.inner.make_client().await;
-        let recorder = self.recorder.clone();
-        Metrics { inner, recorder }
+        let histogram = self.histogram.clone();
+        Metrics { inner, histogram }
     }
 }
 
@@ -45,10 +47,12 @@ impl<C: Client + Send + 'static> Client for Metrics<C> {
         let res = self.inner.get(spec).await;
         let elapsed = Instant::now() - t0;
         let micros = elapsed.as_micros();
+        debug!(%micros);
+        let mut h = self.histogram.write().await;
         if micros < std::u64::MAX as u128 {
-            self.recorder.saturating_record(micros as u64);
+            h.saturating_record(micros as u64);
         } else {
-            self.recorder.saturating_record(std::u64::MAX);
+            h.saturating_record(std::u64::MAX);
         }
         res
     }

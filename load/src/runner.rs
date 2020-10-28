@@ -1,7 +1,7 @@
 use crate::{proto, Client, MakeClient, RateLimit};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
-use tracing::{debug, debug_span};
+use tracing::{debug, debug_span, trace};
 use tracing_futures::Instrument;
 
 #[derive(Copy, Clone)]
@@ -46,7 +46,7 @@ impl Runner {
                     loop {
                         let permits =
                             (streams.clone().acquire_owned().await, limit.acquire().await);
-                        debug!("Acquired permits");
+                        trace!("Acquired permits");
 
                         let mut client = client.clone();
                         tokio::spawn(

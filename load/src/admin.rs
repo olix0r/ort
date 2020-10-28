@@ -1,18 +1,17 @@
 use crate::report::Report;
-use hdrhistogram::sync::SyncHistogram;
+use hdrhistogram::Histogram;
 use serde_json as json;
 use std::{convert::Infallible, net::SocketAddr, sync::Arc};
+use tokio::sync::RwLock;
 
 #[derive(Clone)]
 pub struct Admin {
-    histogram: Arc<SyncHistogram<u64>>,
+    histogram: Arc<RwLock<Histogram<u64>>>,
 }
 
 impl Admin {
-    pub fn new(h: impl Into<Arc<SyncHistogram<u64>>>) -> Self {
-        Self {
-            histogram: h.into(),
-        }
+    pub fn new(histogram: Arc<RwLock<Histogram<u64>>>) -> Self {
+        Self { histogram }
     }
 
     pub async fn serve(&self, addr: SocketAddr) -> Result<(), hyper::Error> {
@@ -36,26 +35,31 @@ impl Admin {
         &self,
         req: http::Request<hyper::Body>,
     ) -> Result<http::Response<hyper::Body>, Infallible> {
-        if let "/live" | "/ready" = req.uri().path() {
-            if let http::Method::GET | http::Method::HEAD = *req.method() {
-                return Ok(http::Response::builder()
-                    .status(http::StatusCode::NO_CONTENT)
-                    .body(hyper::Body::default())
-                    .unwrap());
+        match req.uri().path() {
+            "/live" | "/ready" => {
+                if let http::Method::GET | http::Method::HEAD = *req.method() {
+                    return Ok(http::Response::builder()
+                        .status(http::StatusCode::NO_CONTENT)
+                        .body(hyper::Body::default())
+                        .unwrap());
+                }
             }
-        }
 
-        if let "/report.json" = req.uri().path() {
-            if let http::Method::GET = *req.method() {
-                let report = Report::from(self.histogram.as_ref());
-                let json = json::to_vec_pretty(&report).unwrap();
-                return Ok(http::Response::builder()
-                    .status(http::StatusCode::OK)
-                    .header(http::header::CONTENT_TYPE, "application/json")
-                    //.header(http::header::CONTENT_LENGTH, json.len().to_string())
-                    .body(json.into())
-                    .unwrap());
+            "/report.json" => {
+                if let http::Method::GET = *req.method() {
+                    let report = {
+                        let h = self.histogram.read().await;
+                        Report::from(&*h)
+                    };
+                    return Ok(http::Response::builder()
+                        .status(http::StatusCode::OK)
+                        .header(http::header::CONTENT_TYPE, "application/json")
+                        .body(json::to_vec_pretty(&report).unwrap().into())
+                        .unwrap());
+                }
             }
+
+            _ => {}
         }
 
         Ok(http::Response::builder()

@@ -10,9 +10,12 @@ mod runner;
 use self::{
     admin::Admin, grpc::MakeGrpc, metrics::MakeMetrics, rate_limit::RateLimit, runner::Runner,
 };
-use std::{net::SocketAddr, time::Duration};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 use structopt::StructOpt;
-use tokio::signal::unix::{signal, SignalKind};
+use tokio::{
+    signal::unix::{signal, SignalKind},
+    sync::RwLock,
+};
 use tracing::debug_span;
 use tracing_futures::Instrument;
 
@@ -79,16 +82,15 @@ impl Load {
             return Ok(());
         }
 
-        let histogram = hdrhistogram::Histogram::new(3).unwrap().into_sync();
-        let recorder = histogram.recorder();
+        let histogram = Arc::new(RwLock::new(hdrhistogram::Histogram::new(3).unwrap()));
+        let admin = Admin::new(histogram.clone());
         tokio::spawn(async move {
             let connect = MakeGrpc::new(target, Duration::from_secs(1));
-            let connect = MakeMetrics::new(connect, recorder);
+            let connect = MakeMetrics::new(connect, histogram);
             let limit = RateLimit::new(request_limit, request_limit_window);
             Runner::new(clients, streams, limit).run(connect).await
         });
 
-        let admin = Admin::new(histogram);
         tokio::spawn(
             async move {
                 admin

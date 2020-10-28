@@ -1,4 +1,4 @@
-use hdrhistogram::sync::SyncHistogram;
+use hdrhistogram as hdr;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -36,16 +36,16 @@ struct Percentile {
     value: f64,
 }
 
-impl From<&'_ SyncHistogram<u64>> for Report {
-    fn from(h: &SyncHistogram<u64>) -> Self {
+impl From<&'_ hdr::Histogram<u64>> for Report {
+    fn from(h: &hdr::Histogram<u64>) -> Self {
         Self {
             duration_histogram: Histogram::from(h),
         }
     }
 }
 
-impl From<&'_ SyncHistogram<u64>> for Histogram {
-    fn from(h: &SyncHistogram<u64>) -> Self {
+impl From<&'_ hdr::Histogram<u64>> for Histogram {
+    fn from(h: &hdr::Histogram<u64>) -> Self {
         // let buckets = h
         //     .iter_recorded()
         //     .map(|v| Bucket {
@@ -61,16 +61,16 @@ impl From<&'_ SyncHistogram<u64>> for Histogram {
         for p in &PERCENTILES {
             percentiles.push(Percentile {
                 percentile: *p,
-                value: h.value_at_percentile(*p) as f64,
+                value: h.value_at_percentile(*p) as f64 / 1_000_000.0,
             })
         }
 
         Self {
             count: h.len(),
-            avg: h.mean(),
-            min: h.min() as f64,
-            max: h.max() as f64,
-            std_dev: h.stdev(),
+            avg: h.mean() / 1_000_000.0,
+            min: h.min() as f64 / 1_000_000.0,
+            max: h.max() as f64 / 1_000_000.0,
+            std_dev: h.stdev() / 1_000_000.0,
             percentiles,
             ..Histogram::default()
         }
