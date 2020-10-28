@@ -1,22 +1,21 @@
 use hdrhistogram::sync::SyncHistogram;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Report {
-    duration_histogram: ReportHistogram,
+    duration_histogram: Histogram,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
-struct ReportHistogram {
-    count: u32,
-    min: f32,
-    max: f32,
-    sum: f32,
-    avg: f32,
-    std_dev: f32,
+struct Histogram {
+    count: u64,
+    min: f64,
+    max: f64,
+    sum: f64,
+    avg: f64,
+    std_dev: f64,
     data: Vec<Bucket>,
     percentiles: Vec<Percentile>,
 }
@@ -37,10 +36,17 @@ struct Percentile {
     value: f64,
 }
 
-impl From<Arc<SyncHistogram<u64>>> for Report {
-    fn from(_histo: Arc<SyncHistogram<u64>>) -> Self {
-        // let buckets = self
-        //     .histogram
+impl From<&'_ SyncHistogram<u64>> for Report {
+    fn from(h: &SyncHistogram<u64>) -> Self {
+        Self {
+            duration_histogram: Histogram::from(h),
+        }
+    }
+}
+
+impl From<&'_ SyncHistogram<u64>> for Histogram {
+    fn from(h: &SyncHistogram<u64>) -> Self {
+        // let buckets = h
         //     .iter_recorded()
         //     .map(|v| Bucket {
         //         start: 0,
@@ -49,6 +55,24 @@ impl From<Arc<SyncHistogram<u64>>> for Report {
         //         count: 0,
         //     })
         //     .collect::<Vec<_>>();
-        Self::default()
+
+        const PERCENTILES: [f64; 5] = [50.0, 75.0, 90.0, 99.0, 99.9];
+        let mut percentiles = Vec::with_capacity(PERCENTILES.len());
+        for p in &PERCENTILES {
+            percentiles.push(Percentile {
+                percentile: *p,
+                value: h.value_at_percentile(*p) as f64,
+            })
+        }
+
+        Self {
+            count: h.len(),
+            avg: h.mean(),
+            min: h.min() as f64,
+            max: h.max() as f64,
+            std_dev: h.stdev(),
+            percentiles,
+            ..Histogram::default()
+        }
     }
 }

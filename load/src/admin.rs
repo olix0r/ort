@@ -47,12 +47,12 @@ impl Admin {
 
         if let "/report.json" = req.uri().path() {
             if let http::Method::GET = *req.method() {
-                let report = Report::from(self.histogram.clone());
+                let report = Report::from(self.histogram.as_ref());
                 let json = json::to_vec_pretty(&report).unwrap();
                 return Ok(http::Response::builder()
                     .status(http::StatusCode::OK)
                     .header(http::header::CONTENT_TYPE, "application/json")
-                    .header(http::header::CONTENT_LENGTH, json.len().to_string())
+                    //.header(http::header::CONTENT_LENGTH, json.len().to_string())
                     .body(json.into())
                     .unwrap());
             }
