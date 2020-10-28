@@ -1,6 +1,6 @@
 use rand::{rngs::SmallRng, RngCore, SeedableRng};
 use std::convert::TryInto;
-use tokio::time::delay_for;
+use tokio::time::sleep;
 
 mod proto {
     tonic::include_proto!("ortiofay.olix0r.net");
@@ -35,7 +35,7 @@ impl proto::ortiofay_server::Ortiofay for Api {
 
         if let Some(l) = latency {
             if let Ok(l) = l.try_into() {
-                delay_for(l).await;
+                sleep(l).await;
             }
         }
 
