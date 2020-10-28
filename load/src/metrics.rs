@@ -2,7 +2,7 @@ use crate::{proto, Client, MakeClient};
 use hdrhistogram as hdr;
 use std::{sync::Arc, time::Instant};
 use tokio::sync::RwLock;
-use tracing::debug;
+use tracing::trace;
 
 #[derive(Clone)]
 pub struct MakeMetrics<M> {
@@ -47,7 +47,7 @@ impl<C: Client + Send + 'static> Client for Metrics<C> {
         let res = self.inner.get(spec).await;
         let elapsed = Instant::now() - t0;
         let micros = elapsed.as_micros();
-        debug!(%micros);
+        trace!(%micros);
         let mut h = self.histogram.write().await;
         if micros < std::u64::MAX as u128 {
             h.saturating_record(micros as u64);

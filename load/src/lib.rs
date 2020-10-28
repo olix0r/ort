@@ -1,4 +1,5 @@
 #![deny(warnings, rust_2018_idioms)]
+#![allow(warnings)]
 
 mod admin;
 mod grpc;
