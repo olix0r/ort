@@ -1,16 +1,15 @@
 #![deny(warnings, rust_2018_idioms)]
 
+mod admin;
+mod grpc;
 mod rate_limit;
 mod runner;
 
-use self::{rate_limit::RateLimit, runner::Runner};
-use std::{convert::Infallible, net::SocketAddr, time::Duration};
+use self::{admin::Admin, grpc::MakeGrpc, rate_limit::RateLimit, runner::Runner};
+use std::{net::SocketAddr, time::Duration};
 use structopt::StructOpt;
-use tokio::{
-    signal::unix::{signal, SignalKind},
-    time::delay_for,
-};
-use tracing::{debug_span, warn};
+use tokio::signal::unix::{signal, SignalKind};
+use tracing::debug_span;
 use tracing_futures::Instrument;
 
 mod proto {
@@ -56,43 +55,6 @@ impl Target {
     }
 }
 
-#[derive(Clone)]
-struct MakeGrpc {
-    target: http::Uri,
-    backoff: Duration,
-}
-
-#[derive(Clone)]
-struct Grpc(proto::ortiofay_client::OrtiofayClient<tonic::transport::Channel>);
-
-#[async_trait::async_trait]
-impl runner::MakeClient for MakeGrpc {
-    type Client = Grpc;
-
-    async fn make_client(&mut self) -> Grpc {
-        loop {
-            match proto::ortiofay_client::OrtiofayClient::connect(self.target.clone()).await {
-                Ok(client) => return Grpc(client),
-                Err(error) => {
-                    warn!(%error, "Failed to connect");
-                    delay_for(self.backoff).await;
-                }
-            }
-        }
-    }
-}
-
-#[async_trait::async_trait]
-impl runner::Client for Grpc {
-    async fn get(
-        &mut self,
-        spec: proto::ResponseSpec,
-    ) -> Result<proto::ResponseReply, tonic::Status> {
-        let rsp = self.0.get(spec).await?;
-        Ok(rsp.into_inner())
-    }
-}
-
 #[derive(Debug)]
 struct UnsupportedScheme(String);
 
@@ -119,15 +81,13 @@ impl Load {
             return Ok(());
         }
 
-        let connect = MakeGrpc {
-            target,
-            backoff: Duration::from_secs(1),
-        };
+        tokio::spawn(async move {
+            let connect = MakeGrpc::new(target, Duration::from_secs(1));
+            let limit = RateLimit::new(request_limit, request_limit_window);
+            Runner::new(clients, streams, limit).run(connect).await
+        });
 
-        let limit = RateLimit::new(request_limit, request_limit_window);
-        Runner::new(clients, streams, limit).run(connect).await;
-
-        let admin = Admin;
+        let admin = Admin::default();
         tokio::spawn(
             async move {
                 admin
@@ -141,47 +101,6 @@ impl Load {
         signal(SignalKind::terminate())?.recv().await;
 
         Ok(())
-    }
-}
-
-#[derive(Clone)]
-struct Admin;
-
-impl Admin {
-    async fn serve(&self, addr: SocketAddr) -> Result<(), hyper::Error> {
-        let admin = self.clone();
-        hyper::Server::bind(&addr)
-            .serve(hyper::service::make_service_fn(move |_| {
-                let admin = admin.clone();
-                async move {
-                    Ok::<_, Infallible>(hyper::service::service_fn(
-                        move |req: http::Request<hyper::Body>| {
-                            let admin = admin.clone();
-                            async move { admin.handle(req).await }
-                        },
-                    ))
-                }
-            }))
-            .await
-    }
-
-    async fn handle(
-        &self,
-        req: http::Request<hyper::Body>,
-    ) -> Result<http::Response<hyper::Body>, Infallible> {
-        if let "/live" | "/ready" = req.uri().path() {
-            if let http::Method::GET | http::Method::HEAD = *req.method() {
-                return Ok(http::Response::builder()
-                    .status(http::StatusCode::OK)
-                    .body(hyper::Body::default())
-                    .unwrap());
-            }
-        }
-
-        Ok(http::Response::builder()
-            .status(http::StatusCode::NOT_FOUND)
-            .body(hyper::Body::default())
-            .unwrap())
     }
 }
 

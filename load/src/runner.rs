@@ -28,6 +28,7 @@ pub struct Runner {
 
 impl Runner {
     pub fn new(clients: usize, streams: usize, rate_limit: RateLimit) -> Self {
+        assert!(clients > 0 && streams > 0);
         Self {
             clients,
             streams,
@@ -45,10 +46,6 @@ impl Runner {
             streams,
             rate_limit,
         } = self;
-
-        if clients == 0 || streams == 0 {
-            return;
-        }
         debug!(clients, streams, "Running");
 
         let limit = rate_limit.spawn();
