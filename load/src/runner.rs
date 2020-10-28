@@ -45,7 +45,7 @@ impl Runner {
         }
     }
 
-    pub async fn run<C>(self, connect: C)
+    pub async fn run<C>(self, mut connect: C)
     where
         C: MakeClient + Clone + Send + 'static,
         C::Client: Clone + Send + 'static,
@@ -60,47 +60,40 @@ impl Runner {
 
         let limit = rate_limit.spawn();
 
-        for client in 0..clients {
-            let total_requests = total_requests.clone();
-            let limit = limit.clone();
-            let mut connect = connect.clone();
-            tokio::spawn(
-                async move {
-                    let client = connect.make_client().await;
-                    let streams = Arc::new(Semaphore::new(streams));
-                    let limit = limit.clone();
-                    let total_requests = total_requests.clone();
-                    loop {
-                        if let Some(lim) = total_requests.as_ref() {
-                            if lim.issued.fetch_add(1, Ordering::Release) >= lim.limit {
-                                return;
+        for c in 0..clients {
+            let client = connect.make_client().await;
+
+            for s in 0..streams {
+                let total_requests = total_requests.clone();
+                let limit = limit.clone();
+                let mut client = client.clone();
+                tokio::spawn(
+                    async move {
+                        loop {
+                            if let Some(lim) = total_requests.as_ref() {
+                                if lim.issued.fetch_add(1, Ordering::Release) >= lim.limit {
+                                    return;
+                                }
                             }
+                            let permit = limit.acquire().await;
+                            trace!("Acquired permits");
+
+                            // TODO generate request params (latency, size, error).
+                            let spec = proto::ResponseSpec {
+                                result: Some(proto::response_spec::Result::Success(
+                                    proto::response_spec::Success::default(),
+                                )),
+                                ..Default::default()
+                            };
+
+                            let _ = client.get(spec).await;
+
+                            drop(permit);
                         }
-                        let permits =
-                            (streams.clone().acquire_owned().await, limit.acquire().await);
-                        trace!("Acquired permits");
-
-                        let mut client = client.clone();
-                        tokio::spawn(
-                            async move {
-                                // TODO generate request params (latency, size, error).
-                                let spec = proto::ResponseSpec {
-                                    result: Some(proto::response_spec::Result::Success(
-                                        proto::response_spec::Success::default(),
-                                    )),
-                                    ..Default::default()
-                                };
-
-                                let _ = client.get(spec).await;
-
-                                drop(permits);
-                            }
-                            .in_current_span(),
-                        );
                     }
-                }
-                .instrument(debug_span!("client", id = %client)),
-            );
+                    .instrument(debug_span!("runner", c, s)),
+                );
+            }
         }
     }
 }
