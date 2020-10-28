@@ -10,7 +10,6 @@ publish = false
 rustfmt = ["tonic-build/rustfmt"]
 
 [dependencies]
-futures = "0.3"
 http = "0.2"
 hyper = "0.13.3"
 prost = "0.6"
