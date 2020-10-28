@@ -1,23 +1,8 @@
-use crate::{proto, RateLimit};
+use crate::{proto, Client, MakeClient, RateLimit};
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tracing::{debug, debug_span};
 use tracing_futures::Instrument;
-
-#[async_trait::async_trait]
-pub trait MakeClient {
-    type Client: Client;
-
-    async fn make_client(&mut self) -> Self::Client;
-}
-
-#[async_trait::async_trait]
-pub trait Client {
-    async fn get(
-        &mut self,
-        spec: proto::ResponseSpec,
-    ) -> Result<proto::ResponseReply, tonic::Status>;
-}
 
 #[derive(Copy, Clone)]
 pub struct Runner {
@@ -36,10 +21,10 @@ impl Runner {
         }
     }
 
-    pub async fn run<C, G>(self, connect: C)
+    pub async fn run<C>(self, connect: C)
     where
-        C: MakeClient<Client = G> + Clone + Send + 'static,
-        G: Client + Clone + Send + 'static,
+        C: MakeClient + Clone + Send + 'static,
+        C::Client: Clone + Send + 'static,
     {
         let Self {
             clients,
@@ -74,9 +59,7 @@ impl Runner {
                                     ..Default::default()
                                 };
 
-                                debug!("Sending request");
                                 let _ = client.get(spec).await;
-                                debug!("Request complete");
 
                                 drop(permits);
                             }

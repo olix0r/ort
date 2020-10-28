@@ -2,10 +2,13 @@
 
 mod admin;
 mod grpc;
+mod metrics;
 mod rate_limit;
 mod runner;
 
-use self::{admin::Admin, grpc::MakeGrpc, rate_limit::RateLimit, runner::Runner};
+use self::{
+    admin::Admin, grpc::MakeGrpc, metrics::MakeMetrics, rate_limit::RateLimit, runner::Runner,
+};
 use std::{net::SocketAddr, time::Duration};
 use structopt::StructOpt;
 use tokio::signal::unix::{signal, SignalKind};
@@ -14,6 +17,21 @@ use tracing_futures::Instrument;
 
 mod proto {
     tonic::include_proto!("ortiofay.olix0r.net");
+}
+
+#[async_trait::async_trait]
+pub trait MakeClient {
+    type Client: Client;
+
+    async fn make_client(&mut self) -> Self::Client;
+}
+
+#[async_trait::async_trait]
+pub trait Client {
+    async fn get(
+        &mut self,
+        spec: proto::ResponseSpec,
+    ) -> Result<proto::ResponseReply, tonic::Status>;
 }
 
 #[derive(Clone, Debug, StructOpt)]
@@ -59,7 +77,7 @@ impl Load {
         }
 
         tokio::spawn(async move {
-            let connect = MakeGrpc::new(target, Duration::from_secs(1));
+            let connect = MakeMetrics::new(MakeGrpc::new(target, Duration::from_secs(1)));
             let limit = RateLimit::new(request_limit, request_limit_window);
             Runner::new(clients, streams, limit).run(connect).await
         });

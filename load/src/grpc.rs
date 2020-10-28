@@ -1,4 +1,4 @@
-use crate::{proto, runner};
+use crate::proto;
 use std::time::Duration;
 use tokio::time::delay_for;
 use tracing::warn;
@@ -19,7 +19,7 @@ impl MakeGrpc {
 }
 
 #[async_trait::async_trait]
-impl runner::MakeClient for MakeGrpc {
+impl crate::MakeClient for MakeGrpc {
     type Client = Grpc;
 
     async fn make_client(&mut self) -> Grpc {
@@ -36,7 +36,7 @@ impl runner::MakeClient for MakeGrpc {
 }
 
 #[async_trait::async_trait]
-impl runner::Client for Grpc {
+impl crate::Client for Grpc {
     async fn get(
         &mut self,
         spec: proto::ResponseSpec,
