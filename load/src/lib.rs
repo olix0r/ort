@@ -43,29 +43,6 @@ enum Target {
     Grpc(http::Uri),
 }
 
-impl Target {
-    fn parse(s: &str) -> Result<Target, Box<dyn std::error::Error + 'static>> {
-        use std::str::FromStr;
-
-        let uri = http::Uri::from_str(s)?;
-        match uri.scheme_str() {
-            Some("grpc") | None => Ok(Target::Grpc(uri)),
-            Some(scheme) => Err(UnsupportedScheme(scheme.to_string()).into()),
-        }
-    }
-}
-
-#[derive(Debug)]
-struct UnsupportedScheme(String);
-
-impl std::fmt::Display for UnsupportedScheme {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Unsupported scheme: {}", self.0)
-    }
-}
-
-impl std::error::Error for UnsupportedScheme {}
-
 impl Load {
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
         let Self {
@@ -103,6 +80,33 @@ impl Load {
         Ok(())
     }
 }
+
+// === impl Target ===
+
+impl Target {
+    fn parse(s: &str) -> Result<Target, Box<dyn std::error::Error + 'static>> {
+        use std::str::FromStr;
+
+        let uri = http::Uri::from_str(s)?;
+        match uri.scheme_str() {
+            Some("grpc") | None => Ok(Target::Grpc(uri)),
+            Some(scheme) => Err(UnsupportedScheme(scheme.to_string()).into()),
+        }
+    }
+}
+
+#[derive(Debug)]
+struct UnsupportedScheme(String);
+
+impl std::fmt::Display for UnsupportedScheme {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Unsupported scheme: {}", self.0)
+    }
+}
+
+impl std::error::Error for UnsupportedScheme {}
+
+// === parse_duration ===
 
 fn parse_duration(s: &str) -> Result<Duration, InvalidDuration> {
     use regex::Regex;
