@@ -28,7 +28,7 @@ impl Admin {
         if let "/live" | "/ready" = req.uri().path() {
             if let http::Method::GET | http::Method::HEAD = *req.method() {
                 return Ok(http::Response::builder()
-                    .status(http::StatusCode::OK)
+                    .status(http::StatusCode::NO_CONTENT)
                     .body(hyper::Body::default())
                     .unwrap());
             }
