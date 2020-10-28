@@ -1,4 +1,7 @@
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::{Arc, Weak},
+    time::Duration,
+};
 use tokio::sync::Semaphore;
 use tracing::debug;
 
@@ -38,33 +41,39 @@ impl RateLimit {
     }
 
     pub fn spawn(self) -> Acquire {
-        let Inner { requests, window } = match self.0 {
-            None => return Acquire(None),
-            Some(inner) => inner,
-        };
+        match self.0 {
+            None => Acquire(None),
+            Some(inner) => {
+                // Initialize the semaphore permitting requests.
+                let sem = Arc::new(Semaphore::new(inner.requests));
+                let weak = Arc::downgrade(&sem);
+                tokio::spawn(inner.run(weak));
+                Acquire(Some(sem))
+            }
+        }
+    }
+}
 
-        let semaphore = Arc::new(Semaphore::new(requests));
+impl Inner {
+    async fn run(self, weak: Weak<Semaphore>) {
+        loop {
+            // Wait for the window to expire befor adding more permits.
+            tokio::time::delay_for(self.window).await;
 
-        let weak = Arc::downgrade(&semaphore);
-        tokio::spawn(async move {
-            loop {
-                // Wait for the window to expire befor adding more permits.
-                tokio::time::delay_for(window).await;
-
-                // Refill the semaphore up to `requests`. If all of the acquire handles have been
-                // dropped, stop running.
-                match weak.upgrade() {
-                    None => return,
-                    Some(semaphore) => {
-                        let permits = requests - semaphore.available_permits();
-                        debug!(permits, "Refilling rate limit");
-                        semaphore.add_permits(permits);
-                    }
+            // Refill the semaphore up to `requests`. If all of the acquire handles have been
+            // dropped, stop running.
+            match weak.upgrade() {
+                None => {
+                    debug!("Terminating task");
+                    return;
+                }
+                Some(sem) => {
+                    let permits = self.requests - sem.available_permits();
+                    debug!(permits, "Refilling rate limit");
+                    sem.add_permits(permits);
                 }
             }
-        });
-
-        Acquire(Some(semaphore))
+        }
     }
 }
 
