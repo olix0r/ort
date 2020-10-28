@@ -44,26 +44,27 @@ impl RateLimit {
         };
 
         let semaphore = Arc::new(Semaphore::new(requests));
-        let acquire = Acquire(Some(semaphore.clone()));
 
+        let weak = Arc::downgrade(&semaphore);
         tokio::spawn(async move {
             loop {
                 // Wait for the window to expire befor adding more permits.
                 tokio::time::delay_for(window).await;
 
-                // If all of the acquire handles have been dropped, stop running.
-                if Arc::strong_count(&semaphore) == 1 {
-                    return;
+                // Refill the semaphore up to `requests`. If all of the acquire handles have been
+                // dropped, stop running.
+                match weak.upgrade() {
+                    None => return,
+                    Some(semaphore) => {
+                        let permits = requests - semaphore.available_permits();
+                        debug!(permits, "Refilling rate limit");
+                        semaphore.add_permits(permits);
+                    }
                 }
-
-                // Refill the semaphore up to `requests`.
-                let permits = requests - semaphore.available_permits();
-                debug!(permits, "Refilling rate limit");
-                semaphore.add_permits(permits);
             }
         });
 
-        acquire
+        Acquire(Some(semaphore))
     }
 }
 
