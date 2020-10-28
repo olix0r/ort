@@ -50,6 +50,9 @@ pub struct Load {
     #[structopt(long, parse(try_from_str = parse_duration), default_value = "1s")]
     request_limit_window: Duration,
 
+    #[structopt(long)]
+    total_requests: Option<usize>,
+
     // #[structopt(long)]
     // total_requests: Option<usize>,
     #[structopt(short, long, default_value = "1")]
@@ -75,6 +78,7 @@ impl Load {
             streams,
             request_limit,
             request_limit_window,
+            total_requests,
             target: Target::Grpc(target),
         } = self;
 
@@ -88,7 +92,9 @@ impl Load {
             let connect = MakeGrpc::new(target, Duration::from_secs(1));
             let connect = MakeMetrics::new(connect, histogram);
             let limit = RateLimit::new(request_limit, request_limit_window);
-            Runner::new(clients, streams, limit).run(connect).await
+            Runner::new(clients, streams, total_requests.unwrap_or(0), limit)
+                .run(connect)
+                .await
         });
 
         tokio::spawn(

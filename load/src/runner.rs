@@ -1,23 +1,47 @@
 use crate::{proto, Client, MakeClient, RateLimit};
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 use tokio::sync::Semaphore;
 use tracing::{debug, debug_span, trace};
 use tracing_futures::Instrument;
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct Runner {
     clients: usize,
     streams: usize,
     rate_limit: RateLimit,
+    total_requests: Option<TotalRequestsLimit>,
+}
+
+#[derive(Clone)]
+struct TotalRequestsLimit {
+    limit: usize,
+    issued: Arc<AtomicUsize>,
 }
 
 impl Runner {
-    pub fn new(clients: usize, streams: usize, rate_limit: RateLimit) -> Self {
+    pub fn new(
+        clients: usize,
+        streams: usize,
+        total_requests: usize,
+        rate_limit: RateLimit,
+    ) -> Self {
         assert!(clients > 0 && streams > 0);
+        let total_requests = if total_requests == 0 {
+            None
+        } else {
+            Some(TotalRequestsLimit {
+                limit: total_requests,
+                issued: Arc::new(0.into()),
+            })
+        };
         Self {
             clients,
             streams,
             rate_limit,
+            total_requests,
         }
     }
 
@@ -30,12 +54,14 @@ impl Runner {
             clients,
             streams,
             rate_limit,
+            total_requests,
         } = self;
         debug!(clients, streams, "Running");
 
         let limit = rate_limit.spawn();
 
         for client in 0..clients {
+            let total_requests = total_requests.clone();
             let limit = limit.clone();
             let mut connect = connect.clone();
             tokio::spawn(
@@ -43,7 +69,13 @@ impl Runner {
                     let client = connect.make_client().await;
                     let streams = Arc::new(Semaphore::new(streams));
                     let limit = limit.clone();
+                    let total_requests = total_requests.clone();
                     loop {
+                        if let Some(lim) = total_requests.as_ref() {
+                            if lim.issued.fetch_add(1, Ordering::Release) >= lim.limit {
+                                return;
+                            }
+                        }
                         let permits =
                             (streams.clone().acquire_owned().await, limit.acquire().await);
                         trace!("Acquired permits");
