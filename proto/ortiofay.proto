@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package ortiofay.olix0r.net;
+
+import "google/protobuf/duration.proto";
+
+service Ortiofay {
+  rpc Get(ResponseSpec) returns(ResponseReply) {}
+}
+
+message ResponseSpec {
+  message Success {
+    // Specifies the number of bytes to include in the ResponseReply `data`.
+    int64 size = 1;
+  }
+
+  message Error {
+    // If non-zero, specifies the status code that should be used
+    // messages.
+    int32 code = 1;
+
+    // Specifies the status message that should be used in reply messages.
+    string message = 2;
+  }
+
+  oneof result {
+    Success success = 1;
+    Error error = 2;
+  }
+
+  // Specifies the server-side latency to be added to this response.
+  google.protobuf.Duration latency = 3;
+
+  // An opaque blob that allows clients to transmit request data.
+  bytes data = 4;
+}
+
+message ResponseReply { bytes data = 1; }

@@ -1,0 +1,29 @@
+[workspace]
+members = [
+    ".",
+    "controller",
+    "load",
+    "server",
+]
+
+[package]
+name = "ortiofay"
+version = "0.1.0"
+authors = ["Oliver Gould <ver@buoyant.io>"]
+edition = "2018"
+publish = false
+
+[features]
+default = ["load", "server"]
+controller = ["ortiofay-controller"]
+load = ["ortiofay-load"]
+server = ["ortiofay-server"]
+rustfmt = ["ortiofay-load/rustfmt", "ortiofay-server/rustfmt"]
+
+[dependencies]
+ortiofay-controller = { path = "./controller", optional = true }
+ortiofay-load = { path = "./load", optional = true }
+ortiofay-server = { path = "./server", optional = true }
+structopt = "0.3"
+tokio = { version = "0.2", features = ["macros"] }
+tracing-subscriber = "0.2"
