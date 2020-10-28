@@ -964,11 +964,13 @@ dependencies = [
 name = "ortiofay-load"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "futures",
  "http",
  "hyper",
  "prost",
  "prost-types",
+ "regex",
  "structopt",
  "tokio",
  "tonic",
