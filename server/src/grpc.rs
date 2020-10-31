@@ -1,26 +1,25 @@
-use rand::{rngs::SmallRng, RngCore, SeedableRng};
-use std::convert::TryInto;
-use tokio::time::sleep;
-
 mod proto {
     tonic::include_proto!("ortiofay.olix0r.net");
 }
 
+pub use self::proto::{ortiofay_server::Ortiofay, response_spec, ResponseReply, ResponseSpec};
+use rand::{rngs::SmallRng, RngCore};
+use std::convert::TryInto;
+use tokio::time;
+
 #[derive(Clone)]
-pub(crate) struct Api {
+pub(crate) struct Server {
     rng: SmallRng,
 }
 
-impl Api {
-    pub fn server() -> proto::ortiofay_server::OrtiofayServer<Self> {
-        proto::ortiofay_server::OrtiofayServer::new(Self {
-            rng: SmallRng::from_entropy(),
-        })
+impl Server {
+    pub fn new(rng: SmallRng) -> proto::ortiofay_server::OrtiofayServer<Self> {
+        proto::ortiofay_server::OrtiofayServer::new(Self { rng })
     }
 }
 
 #[tonic::async_trait]
-impl proto::ortiofay_server::Ortiofay for Api {
+impl Ortiofay for Server {
     async fn get(
         &self,
         req: tonic::Request<proto::ResponseSpec>,
@@ -35,7 +34,7 @@ impl proto::ortiofay_server::Ortiofay for Api {
 
         if let Some(l) = latency {
             if let Ok(l) = l.try_into() {
-                sleep(l).await;
+                time::sleep(l).await;
             }
         }
 

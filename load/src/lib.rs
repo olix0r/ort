@@ -14,7 +14,10 @@ use self::{
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 use structopt::StructOpt;
 use tokio::{
-    signal::unix::{signal, SignalKind},
+    signal::{
+        ctrl_c,
+        unix::{signal, SignalKind},
+    },
     sync::RwLock,
 };
 use tokio_compat_02::FutureExt;
@@ -110,7 +113,11 @@ impl Load {
             .instrument(debug_span!("admin")),
         );
 
-        signal(SignalKind::terminate())?.recv().await;
+        let mut term = signal(SignalKind::terminate())?;
+        tokio::select! {
+            _ = ctrl_c() => {}
+            _ = term.recv() => {}
+        }
 
         Ok(())
     }

@@ -46,7 +46,11 @@ impl Controller {
         loop {
             let benches_params = kube::api::ListParams::default();
             info!(%revision, "Watching benches");
-            let mut benches_stream = benches_api.watch(&benches_params, &revision).compat().await?.boxed();
+            let mut benches_stream = benches_api
+                .watch(&benches_params, &revision)
+                .compat()
+                .await?
+                .boxed();
             while let Some(ev) = benches_stream.next().compat().await {
                 match ev {
                     Err(error) => {
