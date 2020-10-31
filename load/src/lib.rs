@@ -67,7 +67,7 @@ pub struct Load {
     #[structopt(short, long, default_value = "1")]
     streams: usize,
 
-    #[structopt(short, long)]
+    #[structopt(short, long, default_value = "100=0")]
     response_sizes: Distribution,
 
     target: Target,
