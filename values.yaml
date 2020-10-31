@@ -1,8 +1,9 @@
 image: ghcr.io/olix0r/ortiofay:v2
 
 load:
-  grpc: true
-  http: false
+  protocols:
+    grpc: true
+    http: true
   replicas: 1
   linkerdInject: true
   clients: 1

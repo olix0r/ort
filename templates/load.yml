@@ -1,52 +1,58 @@
+{{- $ns := .Release.Namespace}}
+{{- $img := .Values.image}}
+{{- $linkerd := .Values.linkerd}}
+{{- $services := int .Values.server.services | default 1}}
+{{- $load := .Values.load}}
+{{- range $proto, $enabled := .Values.load.protocols}}
+{{-   if $enabled }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app: ortiofay
     ortiofay.olix0r.net/role: load
-  name: load
-  namespace: {{.Release.Namespace}}
+    ortiofay.olix0r.net/protocol: {{$proto}}
+  name: load-{{$proto}}
+  namespace: {{$ns}}
 spec:
+  replicas: {{int $load.replicas}}
   selector:
     matchLabels:
       app: ortiofay
       ortiofay.olix0r.net/role: load
-  replicas: {{int .Values.load.replicas}}
+      ortiofay.olix0r.net/protocol: {{$proto}}
   template:
     metadata:
       labels:
         app: ortiofay
         ortiofay.olix0r.net/role: load
+        ortiofay.olix0r.net/protocol: {{$proto}}
       annotations:
-        linkerd.io/inject: {{.Values.load.linkerdInject | default false | ternary "enabled" "disabled"}}
-{{- if .Values.linkerd.proxyImage}}
-        config.linkerd.io/proxy-image: {{.Values.linkerd.proxyImage}}
-{{- end}}
-{{- if .Values.linkerd.proxyVersion}}
-        config.linkerd.io/proxy-version: {{.Values.linkerd.proxyVersion}}
-{{- end}}
+        linkerd.io/inject: {{$load.linkerdInject | default false | ternary "enabled" "disabled"}}
+{{-     if $linkerd.proxyImage}}
+        config.linkerd.io/proxy-image: {{$linkerd.proxyImage}}
+{{-     end}}
+{{-     if $linkerd.proxyVersion}}
+        config.linkerd.io/proxy-version: {{$linkerd.proxyVersion}}
+{{-     end}}
     spec:
       containers:
         - name: main
-          image: {{.Values.image}}
+          image: {{$img}}
           args:
             - load
-            - --clients={{.Values.load.clients | default 1}}
-            - --streams={{.Values.load.streams | default 1}}
-{{- if .Values.load.requestLimit }}
-            - --request-limit={{.Values.load.requestLimit}}
-            - --request-limit-window={{.Values.load.requestLimitWindow | default "1s"}}
-{{- end}}
-{{- if .Values.load.totalRequests }}
-            - --total-request={{.Values.load.totalRequests}}
-{{- end}}
-{{- if .Values.load.http }}
-{{-   range $i, $e := until (int .Values.server.services)}}
-            - {{printf "http://server-%03d:8080" $i}}
-{{-   end}}
-{{- end}}
-{{- if .Values.load.grpc}}
-{{-   range $i, $e := until (int .Values.server.services)}}
-            - {{printf "grpc://server-%03d:8070" $i}}
+            - --clients={{$load.clients | default 1}}
+            - --streams={{$load.streams | default 1}}
+{{-     if $load.requestLimit }}
+            - --request-limit={{$load.requestLimit}}
+            - --request-limit-window={{$load.requestLimitWindow | default "1s"}}
+{{-     end}}
+{{-     if $load.totalRequests }}
+            - --total-request={{$load.totalRequests}}
+{{-     end}}
+{{-     range $i, $e := until $services}}
+            - {{printf "%s://server-%03d:8070" $proto $i}}
+{{-     end}}
 {{-   end}}
 {{- end}}
