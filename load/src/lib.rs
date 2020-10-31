@@ -1,5 +1,4 @@
 #![deny(warnings, rust_2018_idioms)]
-#![allow(warnings)]
 
 mod admin;
 mod grpc;
@@ -9,11 +8,15 @@ mod rate_limit;
 mod report;
 mod runner;
 
+mod proto {
+    tonic::include_proto!("ortiofay.olix0r.net");
+}
+
 use self::{
     admin::Admin, grpc::MakeGrpc, http::MakeHttp, metrics::MakeMetrics, rate_limit::RateLimit,
     runner::Runner,
 };
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
 use structopt::StructOpt;
 use tokio::{
     signal::{
@@ -25,10 +28,6 @@ use tokio::{
 use tokio_compat_02::FutureExt;
 use tracing::debug_span;
 use tracing_futures::Instrument;
-
-mod proto {
-    tonic::include_proto!("ortiofay.olix0r.net");
-}
 
 #[async_trait::async_trait]
 pub trait MakeClient {
@@ -68,8 +67,9 @@ pub struct Load {
     #[structopt(short, long, default_value = "1")]
     streams: usize,
 
-    #[structopt(parse(try_from_str = Target::parse))]
     target: Target,
+
+    targets: Vec<Target>,
 }
 
 #[derive(Clone, Debug)]
@@ -88,6 +88,7 @@ impl Load {
             request_limit_window,
             total_requests,
             target,
+            targets,
         } = self;
 
         if clients == 0 || streams == 0 {
@@ -96,26 +97,32 @@ impl Load {
 
         let histogram = Arc::new(RwLock::new(hdrhistogram::Histogram::new(3).unwrap()));
         let admin = Admin::new(histogram.clone());
-        match target {
-            Target::Grpc(target) => {
-                tokio::spawn(async move {
-                    let connect = MakeGrpc::new(target, Duration::from_secs(1));
-                    let connect = MakeMetrics::new(connect, histogram);
-                    let limit = RateLimit::new(request_limit, request_limit_window);
-                    Runner::new(clients, streams, total_requests.unwrap_or(0), limit)
-                        .run(connect)
-                        .await
-                });
-            }
-            Target::Http(target) => {
-                tokio::spawn(async move {
-                    let connect = MakeHttp::new(target);
-                    let connect = MakeMetrics::new(connect, histogram);
-                    let limit = RateLimit::new(request_limit, request_limit_window);
-                    Runner::new(clients, streams, total_requests.unwrap_or(0), limit)
-                        .run(connect)
-                        .await
-                });
+
+        let limit = RateLimit::new(request_limit, request_limit_window).spawn();
+
+        let targets = Some(target).into_iter().chain(targets).collect::<Vec<_>>();
+        for target in targets.into_iter() {
+            let histogram = histogram.clone();
+            let limit = limit.clone();
+            match target {
+                Target::Grpc(target) => {
+                    tokio::spawn(async move {
+                        let connect = MakeGrpc::new(target, Duration::from_secs(1));
+                        let connect = MakeMetrics::new(connect, histogram);
+                        Runner::new(clients, streams, total_requests.unwrap_or(0), limit)
+                            .run(connect)
+                            .await
+                    });
+                }
+                Target::Http(target) => {
+                    tokio::spawn(async move {
+                        let connect = MakeHttp::new(target);
+                        let connect = MakeMetrics::new(connect, histogram);
+                        Runner::new(clients, streams, total_requests.unwrap_or(0), limit)
+                            .run(connect)
+                            .await
+                    });
+                }
             }
         }
 
@@ -142,10 +149,10 @@ impl Load {
 
 // === impl Target ===
 
-impl Target {
-    fn parse(s: &str) -> Result<Target, Box<dyn std::error::Error + 'static>> {
-        use std::str::FromStr;
+impl FromStr for Target {
+    type Err = Box<dyn std::error::Error + 'static>;
 
+    fn from_str(s: &str) -> Result<Target, Self::Err> {
         let uri = ::http::Uri::from_str(s)?;
         match uri.scheme_str() {
             Some("grpc") | None => Ok(Target::Grpc(uri)),

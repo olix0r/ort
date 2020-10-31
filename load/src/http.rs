@@ -1,8 +1,6 @@
 use crate::proto::{self, response_spec as spec};
-use std::{convert::TryFrom, time::Duration};
-use tokio::time::sleep;
+use std::convert::TryFrom;
 use tokio_compat_02::FutureExt;
-use tracing::warn;
 
 #[derive(Clone)]
 pub struct MakeHttp {

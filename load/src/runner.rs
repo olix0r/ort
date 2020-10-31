@@ -1,9 +1,8 @@
-use crate::{proto, Client, MakeClient, RateLimit};
+use crate::{proto, rate_limit::Acquire, Client, MakeClient};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
 };
-use tokio::sync::Semaphore;
 use tracing::{debug, debug_span, trace};
 use tracing_futures::Instrument;
 
@@ -11,7 +10,7 @@ use tracing_futures::Instrument;
 pub struct Runner {
     clients: usize,
     streams: usize,
-    rate_limit: RateLimit,
+    rate_limit: Acquire,
     total_requests: Option<TotalRequestsLimit>,
 }
 
@@ -22,12 +21,7 @@ struct TotalRequestsLimit {
 }
 
 impl Runner {
-    pub fn new(
-        clients: usize,
-        streams: usize,
-        total_requests: usize,
-        rate_limit: RateLimit,
-    ) -> Self {
+    pub fn new(clients: usize, streams: usize, total_requests: usize, rate_limit: Acquire) -> Self {
         assert!(clients > 0 && streams > 0);
         let total_requests = if total_requests == 0 {
             None
@@ -58,7 +52,7 @@ impl Runner {
         } = self;
         debug!(clients, streams, "Running");
 
-        let limit = rate_limit.spawn();
+        let limit = rate_limit.clone();
 
         for c in 0..clients {
             let client = connect.make_client().await;
