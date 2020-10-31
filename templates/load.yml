@@ -43,7 +43,7 @@ spec:
           args:
             - load
             - --clients={{$load.clients | default 1}}
-            - --streams={{$load.streams | default 1}}
+            - --concurrency={{$load.concurrency | default 1}}
 {{-     if $load.requestLimit }}
             - --request-limit={{$load.requestLimit}}
             - --request-limit-window={{$load.requestLimitWindow | default "1s"}}

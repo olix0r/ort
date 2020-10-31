@@ -1,4 +1,4 @@
-image: ghcr.io/olix0r/ortiofay:v4
+image: ghcr.io/olix0r/ortiofay:v5
 
 load:
   protocols:
@@ -7,7 +7,7 @@ load:
   replicas: 1
   linkerdInject: true
   clients: 1
-  streams: 1
+  concurrency: 1
   #requestLimit: 0
   #requestLimitWindow: 1s
   #responseSizes: 0=1024,100=1048576
