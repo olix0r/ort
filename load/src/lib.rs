@@ -64,8 +64,11 @@ pub struct Load {
     #[structopt(long, default_value = "1")]
     clients: usize,
 
+    #[structopt(long, default_value = "1")]
+    streams: usize,
+
     #[structopt(long, default_value = "0")]
-    concurrency: usize,
+    concurrency_limit: usize,
 
     #[structopt(long, default_value = "100=0")]
     response_sizes: Distribution,
@@ -86,7 +89,8 @@ impl Load {
         let Self {
             admin_addr,
             clients,
-            concurrency,
+            streams,
+            concurrency_limit,
             request_limit,
             request_limit_window,
             response_sizes,
@@ -95,28 +99,28 @@ impl Load {
             targets,
         } = self;
 
-        if clients == 0 {
+        if clients == 0 || streams == 0 {
             return Ok(());
         }
 
         let histogram = Arc::new(RwLock::new(hdrhistogram::Histogram::new(3).unwrap()));
         let admin = Admin::new(histogram.clone());
 
-        let concurrency = if concurrency == 0 {
+        let concurrency_limit = if concurrency_limit == 0 {
             None
         } else {
-            Some(Arc::new(Semaphore::new(concurrency)))
+            Some(Arc::new(Semaphore::new(concurrency_limit)))
         };
 
-        let limit = RateLimit::new(request_limit, request_limit_window).spawn();
+        let rate_limit = RateLimit::new(request_limit, request_limit_window).spawn();
         let rsp_sizes = Arc::new(response_sizes);
         let rng = SmallRng::from_entropy();
 
         let targets = Some(target).into_iter().chain(targets).collect::<Vec<_>>();
         for target in targets.into_iter() {
             let histogram = histogram.clone();
-            let concurrency = concurrency.clone();
-            let limit = limit.clone();
+            let concurrency_limit = concurrency_limit.clone();
+            let rate_limit = rate_limit.clone();
             let rsp_sizes = rsp_sizes.clone();
             let rng = rng.clone();
             match target {
@@ -126,9 +130,10 @@ impl Load {
                         let connect = MakeMetrics::new(connect, histogram);
                         Runner::new(
                             clients,
-                            concurrency,
+                            streams,
                             total_requests.unwrap_or(0),
-                            limit,
+                            concurrency_limit,
+                            rate_limit,
                             rsp_sizes,
                             rng,
                         )
@@ -142,9 +147,10 @@ impl Load {
                         let connect = MakeMetrics::new(connect, histogram);
                         Runner::new(
                             clients,
-                            concurrency,
+                            streams,
                             total_requests.unwrap_or(0),
-                            limit,
+                            concurrency_limit,
+                            rate_limit,
                             rsp_sizes,
                             rng,
                         )

@@ -1,4 +1,4 @@
-use crate::{proto, rate_limit::Acquire, Client, Distribution, MakeClient};
+use crate::{proto, rate_limit, Client, Distribution, MakeClient};
 use rand::{distributions::Distribution as _, rngs::SmallRng};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -11,8 +11,9 @@ use tracing_futures::Instrument;
 #[derive(Clone)]
 pub struct Runner {
     clients: usize,
-    concurrency: Option<Arc<Semaphore>>,
-    rate_limit: Acquire,
+    streams: usize,
+    rate_limit: rate_limit::Acquire,
+    concurrency_limit: Option<Arc<Semaphore>>,
     total_requests: Option<TotalRequestsLimit>,
     response_sizes: Arc<Distribution>,
     rng: SmallRng,
@@ -27,9 +28,10 @@ struct TotalRequestsLimit {
 impl Runner {
     pub fn new(
         clients: usize,
-        concurrency: Option<Arc<Semaphore>>,
+        streams: usize,
         total_requests: usize,
-        rate_limit: Acquire,
+        concurrency_limit: Option<Arc<Semaphore>>,
+        rate_limit: rate_limit::Acquire,
         response_sizes: Arc<Distribution>,
         rng: SmallRng,
     ) -> Self {
@@ -44,7 +46,8 @@ impl Runner {
         };
         Self {
             clients,
-            concurrency,
+            streams,
+            concurrency_limit,
             rate_limit,
             total_requests,
             response_sizes,
@@ -59,7 +62,8 @@ impl Runner {
     {
         let Self {
             clients,
-            concurrency,
+            streams,
+            concurrency_limit,
             rate_limit,
             total_requests,
             response_sizes,
@@ -69,50 +73,49 @@ impl Runner {
         for c in 0..clients {
             let client = connect.make_client().await;
 
-            let total_requests = total_requests.clone();
-            let concurrency = concurrency.clone();
-            let limit = rate_limit.clone();
-            let rsp_sizes = response_sizes.clone();
-            let mut rng = rng.clone();
-            let client = client.clone();
-            tokio::spawn(
-                async move {
-                    loop {
-                        if let Some(lim) = total_requests.as_ref() {
-                            if lim.issued.fetch_add(1, Ordering::Release) >= lim.limit {
-                                return;
+            for s in 0..streams {
+                let total_requests = total_requests.clone();
+                let concurrency = concurrency_limit.clone();
+                let rate = rate_limit.clone();
+                let rsp_sizes = response_sizes.clone();
+                let mut rng = rng.clone();
+                let mut client = client.clone();
+                tokio::spawn(
+                    async move {
+                        loop {
+                            if let Some(lim) = total_requests.as_ref() {
+                                if lim.issued.fetch_add(1, Ordering::Release) >= lim.limit {
+                                    return;
+                                }
                             }
-                        }
-                        let permits = if let Some(c) = concurrency.clone() {
-                            let (l, c) = tokio::join!(limit.acquire(), c.acquire_owned());
-                            (l, Some(c))
-                        } else {
-                            (limit.acquire().await, None)
-                        };
-                        trace!("Acquired permits");
+                            let permits = if let Some(c) = concurrency.clone() {
+                                let (l, c) = tokio::join!(rate.acquire(), c.acquire_owned());
+                                (l, Some(c))
+                            } else {
+                                (rate.acquire().await, None)
+                            };
+                            trace!("Acquired permits");
 
-                        // TODO generate request params (latency, error).
+                            // TODO generate request params (latency, error).
 
-                        let rsp_sz = rsp_sizes.sample(&mut rng);
+                            let rsp_sz = rsp_sizes.sample(&mut rng);
 
-                        let spec = proto::ResponseSpec {
-                            result: Some(proto::response_spec::Result::Success(
-                                proto::response_spec::Success {
-                                    size: rsp_sz as i64,
-                                },
-                            )),
-                            ..Default::default()
-                        };
+                            let spec = proto::ResponseSpec {
+                                result: Some(proto::response_spec::Result::Success(
+                                    proto::response_spec::Success {
+                                        size: rsp_sz as i64,
+                                    },
+                                )),
+                                ..Default::default()
+                            };
 
-                        let mut client = client.clone();
-                        tokio::spawn(async move {
                             let _ = client.get(spec).await;
                             drop(permits);
-                        });
+                        }
                     }
-                }
-                .instrument(debug_span!("runner", c)),
-            );
+                    .instrument(debug_span!("runner", c, s)),
+                );
+            }
         }
     }
 }
