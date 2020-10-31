@@ -1,6 +1,7 @@
 #![deny(warnings, rust_2018_idioms)]
 
 mod admin;
+mod distribution;
 mod grpc;
 mod http;
 mod metrics;
@@ -13,9 +14,10 @@ mod proto {
 }
 
 use self::{
-    admin::Admin, grpc::MakeGrpc, http::MakeHttp, metrics::MakeMetrics, rate_limit::RateLimit,
-    runner::Runner,
+    admin::Admin, distribution::Distribution, grpc::MakeGrpc, http::MakeHttp, metrics::MakeMetrics,
+    rate_limit::RateLimit, runner::Runner,
 };
+use rand::{rngs::SmallRng, SeedableRng};
 use std::{net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
 use structopt::StructOpt;
 use tokio::{
@@ -44,7 +46,7 @@ pub trait Client {
     ) -> Result<proto::ResponseReply, tonic::Status>;
 }
 
-#[derive(Clone, Debug, StructOpt)]
+#[derive(StructOpt)]
 #[structopt(about = "Load generator")]
 pub struct Load {
     #[structopt(short, long, parse(try_from_str), default_value = "0.0.0.0:8000")]
@@ -59,13 +61,14 @@ pub struct Load {
     #[structopt(long)]
     total_requests: Option<usize>,
 
-    // #[structopt(long)]
-    // total_requests: Option<usize>,
     #[structopt(short, long, default_value = "1")]
     clients: usize,
 
     #[structopt(short, long, default_value = "1")]
     streams: usize,
+
+    #[structopt(short, long)]
+    response_sizes: Distribution,
 
     target: Target,
 
@@ -86,6 +89,7 @@ impl Load {
             streams,
             request_limit,
             request_limit_window,
+            response_sizes,
             total_requests,
             target,
             targets,
@@ -99,28 +103,46 @@ impl Load {
         let admin = Admin::new(histogram.clone());
 
         let limit = RateLimit::new(request_limit, request_limit_window).spawn();
+        let rsp_sizes = Arc::new(response_sizes);
+        let rng = SmallRng::from_entropy();
 
         let targets = Some(target).into_iter().chain(targets).collect::<Vec<_>>();
         for target in targets.into_iter() {
             let histogram = histogram.clone();
             let limit = limit.clone();
+            let rsp_sizes = rsp_sizes.clone();
+            let rng = rng.clone();
             match target {
                 Target::Grpc(target) => {
                     tokio::spawn(async move {
                         let connect = MakeGrpc::new(target, Duration::from_secs(1));
                         let connect = MakeMetrics::new(connect, histogram);
-                        Runner::new(clients, streams, total_requests.unwrap_or(0), limit)
-                            .run(connect)
-                            .await
+                        Runner::new(
+                            clients,
+                            streams,
+                            total_requests.unwrap_or(0),
+                            limit,
+                            rsp_sizes,
+                            rng,
+                        )
+                        .run(connect)
+                        .await
                     });
                 }
                 Target::Http(target) => {
                     tokio::spawn(async move {
                         let connect = MakeHttp::new(target);
                         let connect = MakeMetrics::new(connect, histogram);
-                        Runner::new(clients, streams, total_requests.unwrap_or(0), limit)
-                            .run(connect)
-                            .await
+                        Runner::new(
+                            clients,
+                            streams,
+                            total_requests.unwrap_or(0),
+                            limit,
+                            rsp_sizes,
+                            rng,
+                        )
+                        .run(connect)
+                        .await
                     });
                 }
             }

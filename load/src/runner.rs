@@ -1,4 +1,5 @@
-use crate::{proto, rate_limit::Acquire, Client, MakeClient};
+use crate::{proto, rate_limit::Acquire, Client, Distribution, MakeClient};
+use rand::{Rng, rngs::SmallRng};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
@@ -12,6 +13,8 @@ pub struct Runner {
     streams: usize,
     rate_limit: Acquire,
     total_requests: Option<TotalRequestsLimit>,
+    response_sizes: Arc<Distribution>,
+    rng: SmallRng,
 }
 
 #[derive(Clone)]
@@ -21,7 +24,14 @@ struct TotalRequestsLimit {
 }
 
 impl Runner {
-    pub fn new(clients: usize, streams: usize, total_requests: usize, rate_limit: Acquire) -> Self {
+    pub fn new(
+        clients: usize,
+        streams: usize,
+        total_requests: usize,
+        rate_limit: Acquire,
+        response_sizes: Arc<Distribution>,
+        rng: SmallRng,
+    ) -> Self {
         assert!(clients > 0 && streams > 0);
         let total_requests = if total_requests == 0 {
             None
@@ -36,6 +46,8 @@ impl Runner {
             streams,
             rate_limit,
             total_requests,
+            response_sizes,
+            rng,
         }
     }
 
@@ -49,17 +61,19 @@ impl Runner {
             streams,
             rate_limit,
             total_requests,
+            response_sizes,
+            rng
         } = self;
         debug!(clients, streams, "Running");
-
-        let limit = rate_limit.clone();
 
         for c in 0..clients {
             let client = connect.make_client().await;
 
             for s in 0..streams {
                 let total_requests = total_requests.clone();
-                let limit = limit.clone();
+                let limit = rate_limit.clone();
+                let rsp_sizes = response_sizes.clone();
+                let mut rng = rng.clone();
                 let mut client = client.clone();
                 tokio::spawn(
                     async move {
@@ -72,10 +86,15 @@ impl Runner {
                             let permit = limit.acquire().await;
                             trace!("Acquired permits");
 
-                            // TODO generate request params (latency, size, error).
+                            // TODO generate request params (latency, error).
+
+                            let rsp_sz = rsp_sizes.get(rng.gen());
+
                             let spec = proto::ResponseSpec {
                                 result: Some(proto::response_spec::Result::Success(
-                                    proto::response_spec::Success::default(),
+                                    proto::response_spec::Success {
+                                        size: rsp_sz as i64
+                                    }
                                 )),
                                 ..Default::default()
                             };
