@@ -25,6 +25,6 @@ ortiofay-controller = { path = "./controller", optional = true }
 ortiofay-load = { path = "./load", optional = true }
 ortiofay-server = { path = "./server", optional = true }
 structopt = "0.3"
-tokio = { version = "0.3", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "0.3", features = ["macros", "rt-multi-thread", "time"] }
 tokio-compat-02 = "0.1"
 tracing-subscriber = "0.2"

@@ -1091,6 +1091,7 @@ dependencies = [
  "rand",
  "serde",
  "structopt",
+ "tokio 0.2.22",
  "tokio 0.3.2",
  "tokio-compat-02",
  "tonic",

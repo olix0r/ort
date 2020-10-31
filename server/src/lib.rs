@@ -20,7 +20,6 @@ pub struct Server {
 
     #[structopt(short, long, default_value = "0.0.0.0:8080")]
     http_addr: SocketAddr,
-
     // #[structopt(short, long, default_value = "0.0.0.0:8090")]
     // tcp_addr: SocketAddr,
 }

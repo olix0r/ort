@@ -1,6 +1,6 @@
 use rand::{rngs::SmallRng, RngCore};
 use std::{convert::Infallible, net::SocketAddr};
-use tokio::time;
+use tokio_02::time;
 
 type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
@@ -34,15 +34,14 @@ async fn handle<B: hyper::body::HttpBody>(
                             status = code;
                         }
                     }
-                    Some(_) => {}
-                    None => {}
+                    Some(_) | None => {}
                 }
             }
         }
 
         // Start sleeping before generating the body so that time isn't added to
         // our latency.
-        let sleep = time::sleep(latency);
+        let sleep = time::delay_for(latency);
 
         let mut data = Vec::<u8>::with_capacity(rsp_size);
         rng.fill_bytes(data.as_mut());

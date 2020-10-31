@@ -5,7 +5,7 @@ mod proto {
 pub use self::proto::{ortiofay_server::Ortiofay, response_spec, ResponseReply, ResponseSpec};
 use rand::{rngs::SmallRng, RngCore};
 use std::convert::TryInto;
-use tokio::time;
+use tokio_02::time;
 
 #[derive(Clone)]
 pub(crate) struct Server {
@@ -32,11 +32,10 @@ impl Ortiofay for Server {
             data: _,
         } = req.into_inner();
 
-        if let Some(l) = latency {
-            if let Ok(l) = l.try_into() {
-                time::sleep(l).await;
-            }
-        }
+        let l = latency
+            .and_then(|l| l.try_into().ok())
+            .unwrap_or(time::Duration::from_secs(0));
+        time::delay_for(l).await;
 
         match result {
             None => Ok(tonic::Response::new(proto::ResponseReply::default())),

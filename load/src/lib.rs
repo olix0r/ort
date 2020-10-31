@@ -3,13 +3,15 @@
 
 mod admin;
 mod grpc;
+mod http;
 mod metrics;
 mod rate_limit;
 mod report;
 mod runner;
 
 use self::{
-    admin::Admin, grpc::MakeGrpc, metrics::MakeMetrics, rate_limit::RateLimit, runner::Runner,
+    admin::Admin, grpc::MakeGrpc, http::MakeHttp, metrics::MakeMetrics, rate_limit::RateLimit,
+    runner::Runner,
 };
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 use structopt::StructOpt;
@@ -72,7 +74,8 @@ pub struct Load {
 
 #[derive(Clone, Debug)]
 enum Target {
-    Grpc(http::Uri),
+    Http(::http::Uri),
+    Grpc(::http::Uri),
 }
 
 impl Load {
@@ -84,7 +87,7 @@ impl Load {
             request_limit,
             request_limit_window,
             total_requests,
-            target: Target::Grpc(target),
+            target,
         } = self;
 
         if clients == 0 || streams == 0 {
@@ -93,14 +96,28 @@ impl Load {
 
         let histogram = Arc::new(RwLock::new(hdrhistogram::Histogram::new(3).unwrap()));
         let admin = Admin::new(histogram.clone());
-        tokio::spawn(async move {
-            let connect = MakeGrpc::new(target, Duration::from_secs(1));
-            let connect = MakeMetrics::new(connect, histogram);
-            let limit = RateLimit::new(request_limit, request_limit_window);
-            Runner::new(clients, streams, total_requests.unwrap_or(0), limit)
-                .run(connect)
-                .await
-        });
+        match target {
+            Target::Grpc(target) => {
+                tokio::spawn(async move {
+                    let connect = MakeGrpc::new(target, Duration::from_secs(1));
+                    let connect = MakeMetrics::new(connect, histogram);
+                    let limit = RateLimit::new(request_limit, request_limit_window);
+                    Runner::new(clients, streams, total_requests.unwrap_or(0), limit)
+                        .run(connect)
+                        .await
+                });
+            }
+            Target::Http(target) => {
+                tokio::spawn(async move {
+                    let connect = MakeHttp::new(target);
+                    let connect = MakeMetrics::new(connect, histogram);
+                    let limit = RateLimit::new(request_limit, request_limit_window);
+                    Runner::new(clients, streams, total_requests.unwrap_or(0), limit)
+                        .run(connect)
+                        .await
+                });
+            }
+        }
 
         tokio::spawn(
             async move {
@@ -129,9 +146,10 @@ impl Target {
     fn parse(s: &str) -> Result<Target, Box<dyn std::error::Error + 'static>> {
         use std::str::FromStr;
 
-        let uri = http::Uri::from_str(s)?;
+        let uri = ::http::Uri::from_str(s)?;
         match uri.scheme_str() {
             Some("grpc") | None => Ok(Target::Grpc(uri)),
+            Some("http") => Ok(Target::Http(uri)),
             Some(scheme) => Err(UnsupportedScheme(scheme.to_string()).into()),
         }
     }
