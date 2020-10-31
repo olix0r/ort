@@ -1,4 +1,4 @@
-image: ghcr.io/olix0r/ortiofay:v3
+image: ghcr.io/olix0r/ortiofay:v4
 
 load:
   protocols:
