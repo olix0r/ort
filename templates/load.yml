@@ -33,6 +33,13 @@ spec:
             - load
             - --clients={{.Values.load.clients | default 1}}
             - --streams={{.Values.load.streams | default 1}}
+{{- if .Values.load.requestLimit }}
+            - --request-limit={{.Values.load.requestLimit}}
+            - --request-limit-window={{.Values.load.requestLimitWindow | default "1s"}}
+{{- end}}
+{{- if .Values.load.totalRequests }}
+            - --total-request={{.Values.load.totalRequests}}
+{{- end}}
 {{- if .Values.load.http }}
 {{-   range $i, $e := until (int .Values.server.services)}}
             - {{printf "http://server-%03d:8080" $i}}

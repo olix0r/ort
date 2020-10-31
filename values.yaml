@@ -5,6 +5,10 @@ load:
   http: false
   replicas: 1
   linkerdInject: true
+  clients: 1
+  streams: 1
+  #requestLimit: 0
+  #requestLimitWindow: 1s
 
 server:
   services: 1
