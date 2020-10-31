@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ortiofay
+    ortiofay.olix0r.net/role: load
+  name: load
+  namespace: {{.Release.Namespace}}
+spec:
+  selector:
+    matchLabels:
+      app: ortiofay
+      ortiofay.olix0r.net/role: load
+  replicas: {{int .Values.load.replicas}}
+  template:
+    metadata:
+      labels:
+        app: ortiofay
+        ortiofay.olix0r.net/role: load
+      annotations:
+        linkerd.io/inject: {{.Values.load.linkerdInject | default false | ternary "enabled" "disabled"}}
+{{- if .Values.linkerd.proxyImage}}
+        config.linkerd.io/proxy-image: {{.Values.linkerd.proxyImage}}
+{{- end}}
+{{- if .Values.linkerd.proxyVersion}}
+        config.linkerd.io/proxy-version: {{.Values.linkerd.proxyVersion}}
+{{- end}}
+    spec:
+      containers:
+        - name: main
+          image: {{.Values.image}}
+          args:
+            - load
+            - --clients={{.Values.load.clients | default 1}}
+            - --streams={{.Values.load.streams | default 1}}
+{{- if .Values.load.http }}
+{{-   range $i, $e := until (int .Values.server.services)}}
+            - {{printf "http://server-%03d:8080" $i}}
+{{-   end}}
+{{- end}}
+{{- if .Values.load.grpc}}
+{{-   range $i, $e := until (int .Values.server.services)}}
+            - {{printf "grpc://server-%03d:8070" $i}}
+{{-   end}}
+{{- end}}

@@ -1,0 +1,16 @@
+image: ghcr.io/olix0r/ortiofay:v2
+
+load:
+  grpc: true
+  http: false
+  replicas: 1
+  linkerdInject: true
+
+server:
+  services: 1
+  replicas: 1
+  linkerdInject: true
+
+linkerd: {}
+  #proxyImage: ...
+  #proxyVersion: ...
