@@ -51,6 +51,9 @@ spec:
 {{-     if $load.totalRequests }}
             - --total-request={{$load.totalRequests}}
 {{-     end}}
+{{-     if $load.responseSizes }}
+            - --response-sizes={{$load.responseSizes}}
+{{-     end}}
 {{-     range $i, $e := until $services}}
             - {{printf "%s://server-%03d:8070" $proto $i}}
 {{-     end}}

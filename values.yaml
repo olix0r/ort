@@ -1,4 +1,4 @@
-image: ghcr.io/olix0r/ortiofay:v2
+image: ghcr.io/olix0r/ortiofay:v3
 
 load:
   protocols:
@@ -10,6 +10,7 @@ load:
   streams: 1
   #requestLimit: 0
   #requestLimitWindow: 1s
+  #responseSizes: 0=1024,100=1048576
 
 server:
   services: 1
