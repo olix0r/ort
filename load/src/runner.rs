@@ -1,5 +1,5 @@
 use crate::{proto, rate_limit::Acquire, Client, Distribution, MakeClient};
-use rand::{rngs::SmallRng, Rng};
+use rand::{distributions::Distribution as _, rngs::SmallRng};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
@@ -93,7 +93,7 @@ impl Runner {
 
                         // TODO generate request params (latency, error).
 
-                        let rsp_sz = rsp_sizes.get(rng.gen());
+                        let rsp_sz = rsp_sizes.sample(&mut rng);
 
                         let spec = proto::ResponseSpec {
                             result: Some(proto::response_spec::Result::Success(

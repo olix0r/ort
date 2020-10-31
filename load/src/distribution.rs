@@ -135,6 +135,12 @@ impl Distribution {
     }
 }
 
+impl rand::distributions::Distribution<u64> for Distribution {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> u64 {
+        self.get(rng.gen())
+    }
+}
+
 // === impl Percentile ===
 
 impl Percentile {
