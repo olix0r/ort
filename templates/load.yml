@@ -3,7 +3,7 @@
 {{- $linkerd := .Values.linkerd }}
 {{- $services := int .Values.server.services | default 1}}
 {{- $load := .Values.load }}
-{{- range $proto, $port := .Values.load.protocols }}
+{{- range $proto, $port := .Values.protocols }}
 {{-   if $port }}
 ---
 apiVersion: apps/v1
