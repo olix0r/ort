@@ -11,7 +11,7 @@ pub struct MakeGrpc {
 }
 
 #[derive(Clone)]
-pub struct Grpc(proto::ortiofay_client::OrtiofayClient<tonic::transport::Channel>);
+pub struct Grpc(proto::ort_client::OrtClient<tonic::transport::Channel>);
 
 impl MakeGrpc {
     pub fn new(target: http::Uri, backoff: Duration) -> Self {
@@ -25,7 +25,7 @@ impl crate::MakeClient for MakeGrpc {
 
     async fn make_client(&mut self) -> Grpc {
         loop {
-            match proto::ortiofay_client::OrtiofayClient::connect(self.target.clone())
+            match proto::ort_client::OrtClient::connect(self.target.clone())
                 .compat()
                 .await
             {

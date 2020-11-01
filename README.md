@@ -1,11 +1,14 @@
-# Ortiofay
+# ort: Oliver's Routine Tests
+
+The project consists of a client and server that are ready to be deployed in
+Kubernetes, especially for testing [Linkerd](https://linkerd.io).
 
 ```
-ortiofay 0.1.0
+ort 0.1.0
 Load harness
 
 USAGE:
-    ortiofay <SUBCOMMAND>
+    ort <SUBCOMMAND>
 
 FLAGS:
     -h, --help       Prints help information
@@ -16,6 +19,30 @@ SUBCOMMANDS:
     load      Load generator
     server    Load target
 ```
+
+## Compiling
+
+```sh
+:; cargo check
+:; cargo test
+:; cargo build --release
+:; docker buildx build .
+```
+
+## Running
+
+```sh
+:; RUST_LOG=ort=debug cargo run -- server
+:; RUST_LOG=ort=debug cargo run -- load grpc://localhost:8070 http://localhost:8080
+```
+
+## Deploying
+
+```sh
+:; helm install ortiofay . --namespace ort --create-namespace
+```
+
+See the <./values.yml>
 
 ## License
 

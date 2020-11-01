@@ -1,53 +1,52 @@
-{{- $ns := .Release.Namespace}}
-{{- $img := .Values.image}}
-{{- $replicas := int .Values.server.replicas}}
-{{- $linkerd := .Values.linkerd}}
-{{- $server := .Values.server}}
-{{- range $i, $e := until (.Values.server.services | int)}}
+{{- $ns := .Release.Namespace }}
+{{- $img := .Values.image }}
+{{- $replicas := int .Values.server.replicas }}
+{{- $linkerd := .Values.linkerd }}
+{{- $server := .Values.server }}
+{{- $protocols := .Values.protocols }}
+{{- range $i, $e := until (.Values.server.services | int) }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: ortiofay
+    app: ort
   name: server-{{printf "%03d" $i}}
   namespace: {{$ns}}
 spec:
   selector:
-    app: ortiofay
-    ortiofay.olix0r.net/role: server
-    ortiofay.olix0r.net/instance: {{quote $i}}
+    app: ort
+    ort.olix0r.net/role: server
+    ort.olix0r.net/instance: {{quote $i}}
   ports:
-    - port: 8070
-      targetPort: 8070
-      name: grpc
-    - port: 8080
-      targetPort: 8080
-      name: http
-
+  {{- range $name, $port := $protocols }}
+    - port: {{ $port }}
+      targetPort: {{ $port }}
+      name: {{ $name }}
+  {{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: ortiofay
-    ortiofay.olix0r.net/role: server
-    ortiofay.olix0r.net/instance: {{quote $i}}
+    app: ort
+    ort.olix0r.net/role: server
+    ort.olix0r.net/instance: {{quote $i}}
   name: server-{{printf "%03d" $i}}
   namespace: {{$ns}}
 spec:
   selector:
     matchLabels:
-      app: ortiofay
-      ortiofay.olix0r.net/role: server
-      ortiofay.olix0r.net/instance: {{quote $i}}
+      app: ort
+      ort.olix0r.net/role: server
+      ort.olix0r.net/instance: {{quote $i}}
   replicas: {{$replicas}}
   template:
     metadata:
       labels:
-        app: ortiofay
-        ortiofay.olix0r.net/role: server
-        ortiofay.olix0r.net/instance: {{quote $i}}
+        app: ort
+        ort.olix0r.net/role: server
+        ort.olix0r.net/instance: {{quote $i}}
       annotations:
 {{ merge $linkerd $server.linkerd | include "ort.linkerd" | indent 8 }}
     spec:
@@ -56,10 +55,9 @@ spec:
           image: {{$img}}
           args: ["server"]
           ports:
-            - containerPort: 8070
-              protocol: TCP
-              name: grpc
-            - containerPort: 8080
-              protocol: TCP
-              name: http
+          {{- range $name, $port := $protocols }}
+            - protocol: TCP
+              containerPort: {{ $port }}
+              name: {{ $name }}
+          {{- end }}
 {{- end}}

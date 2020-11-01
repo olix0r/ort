@@ -1,58 +1,46 @@
-{{- $ns := .Release.Namespace}}
-{{- $img := .Values.image}}
-{{- $linkerd := .Values.linkerd}}
+{{- $ns := .Release.Namespace }}
+{{- $img := .Values.image }}
+{{- $linkerd := .Values.linkerd }}
 {{- $services := int .Values.server.services | default 1}}
-{{- $load := .Values.load}}
-{{- range $proto, $enabled := .Values.load.protocols}}
-{{-   if $enabled }}
+{{- $load := .Values.load }}
+{{- range $proto, $port := .Values.load.protocols }}
+{{-   if $port }}
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: ortiofay
-    ortiofay.olix0r.net/role: load
-    ortiofay.olix0r.net/protocol: {{$proto}}
-  name: load-{{$proto}}
-  namespace: {{$ns}}
+    app: ort
+    ort.olix0r.net/role: load
+    ort.olix0r.net/protocol: {{ $proto }}
+  name: load-{{ $proto }}
+  namespace: {{ $ns }}
 spec:
-  replicas: {{int $load.replicas}}
+  replicas: {{ int $load.replicas }}
   selector:
     matchLabels:
-      app: ortiofay
-      ortiofay.olix0r.net/role: load
-      ortiofay.olix0r.net/protocol: {{$proto}}
+      app: ort
+      ort.olix0r.net/role: load
+      ort.olix0r.net/protocol: {{ $proto }}
   template:
     metadata:
       labels:
-        app: ortiofay
-        ortiofay.olix0r.net/role: load
-        ortiofay.olix0r.net/protocol: {{$proto}}
+        app: ort
+        ort.olix0r.net/role: load
+        ort.olix0r.net/protocol: {{ $proto }}
       annotations:
 {{ merge $linkerd $load.linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       containers:
         - name: main
-          image: {{$img}}
+          image: {{ $img }}
           args:
             - load
-            - --clients={{$load.clients | default 1}}
-            - --streams={{$load.streams | default 1}}
-{{-     if $load.concurrencyLimit }}
-            - --concurrency-limit={{$load.concurrencyLimit}}
-{{-     end}}
-{{-     if $load.requestLimit }}
-            - --request-limit={{$load.requestLimit}}
-            - --request-limit-window={{$load.requestLimitWindow | default "1s"}}
-{{-     end}}
-{{-     if $load.totalRequests }}
-            - --total-request={{$load.totalRequests}}
-{{-     end}}
-{{-     if $load.responseSizes }}
-            - --response-sizes={{$load.responseSizes}}
-{{-     end}}
-{{-     range $i, $e := until $services}}
-            - {{printf "%s://server-%03d:8070" $proto $i}}
-{{-     end}}
-{{-   end}}
-{{- end}}
+          {{- range $f, $v := $load.flags }}
+            - --{{ kebabcase $f }}={{ $v }}
+          {{- end }}
+          {{- range $i, $e := until $services }}
+            - {{ printf "%s://server-%03d:%d" $proto $i $port }}
+          {{- end }}
+{{-   end }}
+{{- end }}

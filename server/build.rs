@@ -1,5 +1,5 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let files = &["../proto/ortiofay.proto"];
+    let files = &["../proto/ort.proto"];
     let dirs = &["../proto"];
 
     tonic_build::configure()

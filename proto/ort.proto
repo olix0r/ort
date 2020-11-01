@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package ortiofay.olix0r.net;
+package ort.olix0r.net;
 
 import "google/protobuf/duration.proto";
 
-service Ortiofay {
+service Ort {
   rpc Get(ResponseSpec) returns(ResponseReply) {}
 }
 

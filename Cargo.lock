@@ -673,11 +673,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "260e51e7efe62b592207e9e13a68e43692a7a279171d6ba57abd208bf23645ad"
 
 [[package]]
-name = "ortiofay"
+name = "ort"
 version = "0.1.0"
 dependencies = [
- "ortiofay-load",
- "ortiofay-server",
+ "ort-load",
+ "ort-server",
  "structopt",
  "tokio 0.3.2",
  "tokio-compat-02",
@@ -685,7 +685,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ortiofay-load"
+name = "ort-load"
 version = "0.1.0"
 dependencies = [
  "async-trait",
@@ -709,7 +709,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ortiofay-server"
+name = "ort-server"
 version = "0.1.0"
 dependencies = [
  "http",

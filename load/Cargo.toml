@@ -1,5 +1,5 @@
 [package]
-name = "ortiofay-load"
+name = "ort-load"
 version = "0.1.0"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"

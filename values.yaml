@@ -1,18 +1,22 @@
-image: ghcr.io/olix0r/ortiofay:v6
+image: ghcr.io/olix0r/ort:v0.1.0
+
+# # If the protocol ports are unset (or set to 0), then the load deployment won't be created and
+# the service won't expose the port.
+protocols:
+  grpc: 8070
+  http: 8080
 
 load:
-  protocols:
-    grpc: true
-    http: true
   replicas: 1
   linkerdInject: true
-  clients: 1
-  streams: 1
-  #concurrencyLimit: 0
-  #requestLimit: 0
-  #requestLimitWindow: 1s
-  #responseSizes: 0=1024,100=1048576
   linkerd: {}
+  flags: {}
+    #clients: 1
+    #streams: 1
+    #concurrencyLimit: 0
+    #requestLimit: 0
+    #requestLimitWindow: 1s
+    #responseSizes: 0=1024,100=1048576
 
 server:
   services: 1

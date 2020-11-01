@@ -1,8 +1,8 @@
 mod proto {
-    tonic::include_proto!("ortiofay.olix0r.net");
+    tonic::include_proto!("ort.olix0r.net");
 }
 
-pub use self::proto::{ortiofay_server::Ortiofay, response_spec, ResponseReply, ResponseSpec};
+pub use self::proto::{ort_server::Ort, response_spec, ResponseReply, ResponseSpec};
 use rand::{rngs::SmallRng, RngCore};
 use std::convert::TryInto;
 use tokio_02::time;
@@ -13,13 +13,13 @@ pub(crate) struct Server {
 }
 
 impl Server {
-    pub fn new(rng: SmallRng) -> proto::ortiofay_server::OrtiofayServer<Self> {
-        proto::ortiofay_server::OrtiofayServer::new(Self { rng })
+    pub fn new(rng: SmallRng) -> proto::ort_server::OrtServer<Self> {
+        proto::ort_server::OrtServer::new(Self { rng })
     }
 }
 
 #[tonic::async_trait]
-impl Ortiofay for Server {
+impl Ort for Server {
     async fn get(
         &self,
         req: tonic::Request<proto::ResponseSpec>,

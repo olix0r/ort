@@ -6,7 +6,7 @@ members = [
 ]
 
 [package]
-name = "ortiofay"
+name = "ort"
 version = "0.1.0"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
@@ -14,13 +14,13 @@ publish = false
 
 [features]
 default = ["load", "server"]
-load = ["ortiofay-load"]
-server = ["ortiofay-server"]
-rustfmt = ["ortiofay-load/rustfmt", "ortiofay-server/rustfmt"]
+load = ["ort-load"]
+server = ["ort-server"]
+rustfmt = ["ort-load/rustfmt", "ort-server/rustfmt"]
 
 [dependencies]
-ortiofay-load = { path = "./load", optional = true }
-ortiofay-server = { path = "./server", optional = true }
+ort-load = { path = "./load", optional = true }
+ort-server = { path = "./server", optional = true }
 structopt = "0.3"
 tokio = { version = "0.3", features = ["macros", "rt-multi-thread", "time"] }
 tokio-compat-02 = "0.1"

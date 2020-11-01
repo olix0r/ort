@@ -10,7 +10,7 @@ mod report;
 mod runner;
 
 mod proto {
-    tonic::include_proto!("ortiofay.olix0r.net");
+    tonic::include_proto!("ort.olix0r.net");
 }
 
 use self::{
