@@ -40,7 +40,7 @@ spec:
             - --{{ kebabcase $f }}={{ $v }}
           {{- end }}
           {{- range $i, $e := until $services }}
-            - {{ printf "%s://server-%03d:%d" $proto $i $port }}
+            - {{ printf "%s://server-%03d:%d" $proto $i (int $port) }}
           {{- end }}
 {{-   end }}
 {{- end }}
