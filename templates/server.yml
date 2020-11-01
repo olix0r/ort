@@ -20,9 +20,11 @@ spec:
     ort.olix0r.net/instance: {{quote $i}}
   ports:
   {{- range $name, $port := $protocols }}
+  {{-   if $port }}
     - port: {{ $port }}
       targetPort: {{ $port }}
       name: {{ $name }}
+  {{-   end }}
   {{- end }}
 ---
 apiVersion: apps/v1
@@ -56,8 +58,10 @@ spec:
           args: ["server"]
           ports:
           {{- range $name, $port := $protocols }}
+          {{-   if $port }}
             - protocol: TCP
               containerPort: {{ $port }}
               name: {{ $name }}
+          {{-   end }}
           {{- end }}
 {{- end}}
