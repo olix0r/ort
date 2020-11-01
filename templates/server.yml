@@ -2,7 +2,7 @@
 {{- $img := .Values.image}}
 {{- $replicas := int .Values.server.replicas}}
 {{- $linkerd := .Values.linkerd}}
-{{- $inject := .Values.server.linkerdInject| default false}}
+{{- $server := .Values.server}}
 {{- range $i, $e := until (.Values.server.services | int)}}
 ---
 apiVersion: v1
@@ -49,13 +49,7 @@ spec:
         ortiofay.olix0r.net/role: server
         ortiofay.olix0r.net/instance: {{quote $i}}
       annotations:
-        linkerd.io/inject: {{$inject | ternary "enabled" "disabled"}}
-{{- if $linkerd.proxyImage}}
-        config.linkerd.io/proxy-image: {{$linkerd.proxyImage}}
-{{- end}}
-{{- if $linkerd.proxyVersion}}
-        config.linkerd.io/proxy-version: {{$linkerd.proxyVersion}}
-{{- end}}
+{{ merge $linkerd $server.linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       containers:
         - name: main

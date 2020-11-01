@@ -12,11 +12,13 @@ load:
   #requestLimit: 0
   #requestLimitWindow: 1s
   #responseSizes: 0=1024,100=1048576
+  linkerd: {}
 
 server:
   services: 1
   replicas: 1
   linkerdInject: true
+  linkerd: {}
 
 linkerd: {}
   #proxyImage: ...

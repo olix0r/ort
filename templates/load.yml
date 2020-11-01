@@ -29,13 +29,7 @@ spec:
         ortiofay.olix0r.net/role: load
         ortiofay.olix0r.net/protocol: {{$proto}}
       annotations:
-        linkerd.io/inject: {{$load.linkerdInject | default false | ternary "enabled" "disabled"}}
-{{-     if $linkerd.proxyImage}}
-        config.linkerd.io/proxy-image: {{$linkerd.proxyImage}}
-{{-     end}}
-{{-     if $linkerd.proxyVersion}}
-        config.linkerd.io/proxy-version: {{$linkerd.proxyVersion}}
-{{-     end}}
+{{ merge $linkerd $load.linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       containers:
         - name: main
