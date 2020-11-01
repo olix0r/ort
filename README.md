@@ -39,7 +39,7 @@ SUBCOMMANDS:
 ## Deploying
 
 ```sh
-:; helm install ortiofay . --namespace ort --create-namespace
+:; helm install ort . --namespace ort --create-namespace
 ```
 
 See the <./values.yml>
