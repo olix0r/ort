@@ -7,7 +7,7 @@ members = [
 
 [package]
 name = "ort"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
 publish = false
