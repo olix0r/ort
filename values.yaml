@@ -1,4 +1,4 @@
-image: ghcr.io/olix0r/ort:v0.1.0
+image: ghcr.io/olix0r/ort:v0.1.1
 
 # # If the protocol ports are unset (or set to 0), then the load deployment won't be created and
 # the service won't expose the port.
@@ -13,6 +13,7 @@ load:
   flags: {}
     #clients: 1
     #streams: 1
+    #httpClose: false
     #concurrencyLimit: 0
     #requestLimit: 0
     #requestLimitWindow: 1s
