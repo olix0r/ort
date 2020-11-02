@@ -24,14 +24,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
     #[cfg(feature = "load")]
     if let Ort::Load(l) = cmd {
-        l.run().await?;
-        return Ok(());
+        return l.run().await;
     }
 
     #[cfg(feature = "server")]
     if let Ort::Server(s) = cmd {
-        s.run().await?;
-        return Ok(());
+        return s.run().await;
     }
 
     Ok(())

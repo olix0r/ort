@@ -5,17 +5,19 @@ use tokio_compat_02::FutureExt;
 #[derive(Clone)]
 pub struct MakeHttp {
     target: http::Uri,
+    close: bool,
 }
 
 #[derive(Clone)]
 pub struct Http {
     client: hyper::Client<hyper::client::HttpConnector>,
     target: http::Uri,
+    close: bool,
 }
 
 impl MakeHttp {
-    pub fn new(target: http::Uri) -> Self {
-        Self { target }
+    pub fn new(target: http::Uri, close: bool) -> Self {
+        Self { target, close }
     }
 }
 
@@ -27,6 +29,7 @@ impl crate::MakeClient for MakeHttp {
         Http {
             target: self.target.clone(),
             client: hyper::Client::new(),
+            close: self.close,
         }
     }
 }
@@ -60,9 +63,18 @@ impl crate::Client for Http {
             .unwrap(),
         );
 
+        let mut req = http::Request::builder();
+        if self.close {
+            req = req.header(http::header::CONNECTION, "close");
+        }
+
         let rsp = self
             .client
-            .get(uri.build().unwrap())
+            .request(
+                req.uri(uri.build().unwrap())
+                    .body(hyper::Body::default())
+                    .unwrap(),
+            )
             .compat()
             .await
             .map_err(|e| tonic::Status::internal(e.to_string()))?;

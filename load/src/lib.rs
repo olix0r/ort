@@ -64,6 +64,9 @@ pub struct Load {
     #[structopt(long, default_value = "1")]
     clients: usize,
 
+    #[structopt(long)]
+    http_close: bool,
+
     #[structopt(long, default_value = "1")]
     streams: usize,
 
@@ -90,6 +93,7 @@ impl Load {
             admin_addr,
             clients,
             streams,
+            http_close,
             concurrency_limit,
             request_limit,
             request_limit_window,
@@ -143,7 +147,7 @@ impl Load {
                 }
                 Target::Http(target) => {
                     tokio::spawn(async move {
-                        let connect = MakeHttp::new(target);
+                        let connect = MakeHttp::new(target, http_close);
                         let connect = MakeMetrics::new(connect, histogram);
                         Runner::new(
                             clients,
