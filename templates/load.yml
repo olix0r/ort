@@ -29,7 +29,7 @@ spec:
         ort.olix0r.net/role: load
         ort.olix0r.net/protocol: {{ $proto }}
       annotations:
-{{ merge $linkerd $load.linkerd | include "ort.linkerd" | indent 8 }}
+{{ deepCopy $linkerd | merge $load.linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       containers:
         - name: main

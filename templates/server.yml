@@ -50,7 +50,7 @@ spec:
         ort.olix0r.net/role: server
         ort.olix0r.net/instance: {{quote $i}}
       annotations:
-{{ merge $linkerd $server.linkerd | include "ort.linkerd" | indent 8 }}
+{{ deepCopy $linkerd | merge $server.linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       containers:
         - name: main
