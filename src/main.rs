@@ -34,7 +34,13 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
     let rt = {
         let mut rt = rt::Builder::new_multi_thread();
-        rt.thread_name("ort").enable_all();
+        rt.enable_all();
+        rt.thread_name_fn(|| {
+            use std::sync::atomic::{AtomicUsize, Ordering};
+            static ID: AtomicUsize = AtomicUsize::new(0);
+            let id = ID.fetch_add(1, Ordering::SeqCst);
+            format!("ort-{}", id)
+        });
         if let Some(t) = threads {
             debug!(threads = %t, "Initializing runtime");
             rt.worker_threads(t);
