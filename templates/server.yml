@@ -57,7 +57,7 @@ spec:
           image: {{$img}}
           args:
           {{- if $server.threads }}
-            - threads={{ $server.threads }}
+            - --threads={{ $server.threads }}
           {{- end }}
             - server
           ports:
