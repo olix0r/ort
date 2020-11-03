@@ -4,6 +4,7 @@ mod admin;
 mod distribution;
 mod grpc;
 mod http;
+mod limit;
 mod metrics;
 mod rate_limit;
 mod report;
@@ -120,13 +121,12 @@ impl Load {
             Some(Arc::new(Semaphore::new(concurrency_limit)))
         };
 
-        let rate_limit = RateLimit::new(request_limit, request_limit_window).spawn();
+        let rate_limit = RateLimit::spawn(request_limit, request_limit_window);
         let runner = Runner::new(
             clients,
             streams,
             total_requests.unwrap_or(0),
-            concurrency_limit,
-            rate_limit,
+            (concurrency_limit, rate_limit),
             Arc::new(response_sizes),
             SmallRng::from_entropy(),
         );

@@ -1,19 +1,17 @@
-use crate::{proto, rate_limit, Client, Distribution, MakeClient};
+use crate::{limit::Acquire, proto, Client, Distribution, MakeClient};
 use rand::{distributions::Distribution as _, rngs::SmallRng};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
 };
-use tokio::sync::Semaphore;
 use tracing::{debug_span, trace};
 use tracing_futures::Instrument;
 
 #[derive(Clone)]
-pub struct Runner {
+pub struct Runner<L> {
     clients: usize,
     streams: usize,
-    rate_limit: rate_limit::Acquire,
-    concurrency_limit: Option<Arc<Semaphore>>,
+    limit: L,
     total_requests: Option<TotalRequestsLimit>,
     response_sizes: Arc<Distribution>,
     rng: SmallRng,
@@ -25,13 +23,12 @@ struct TotalRequestsLimit {
     issued: Arc<AtomicUsize>,
 }
 
-impl Runner {
+impl<L: Acquire> Runner<L> {
     pub fn new(
         clients: usize,
         streams: usize,
         total_requests: usize,
-        concurrency_limit: Option<Arc<Semaphore>>,
-        rate_limit: rate_limit::Acquire,
+        limit: L,
         response_sizes: Arc<Distribution>,
         rng: SmallRng,
     ) -> Self {
@@ -47,8 +44,7 @@ impl Runner {
         Self {
             clients,
             streams,
-            concurrency_limit,
-            rate_limit,
+            limit,
             total_requests,
             response_sizes,
             rng,
@@ -63,8 +59,7 @@ impl Runner {
         let Self {
             clients,
             streams,
-            concurrency_limit,
-            rate_limit,
+            limit,
             total_requests,
             response_sizes,
             rng,
@@ -75,8 +70,7 @@ impl Runner {
 
             for s in 0..streams {
                 let total_requests = total_requests.clone();
-                let concurrency = concurrency_limit.clone();
-                let rate = rate_limit.clone();
+                let limit = limit.clone();
                 let rsp_sizes = response_sizes.clone();
                 let mut rng = rng.clone();
                 let mut client = client.clone();
@@ -88,13 +82,8 @@ impl Runner {
                                     return;
                                 }
                             }
-                            let permits = if let Some(c) = concurrency.clone() {
-                                let (l, c) = tokio::join!(rate.acquire(), c.acquire_owned());
-                                (l, Some(c))
-                            } else {
-                                (rate.acquire().await, None)
-                            };
-                            trace!("Acquired permits");
+                            let permit = limit.acquire().await;
+                            trace!("Acquired permit");
 
                             // TODO generate request params (latency, error).
 
@@ -110,7 +99,7 @@ impl Runner {
                             };
 
                             let _ = client.get(spec).await;
-                            drop(permits);
+                            drop(permit);
                         }
                     }
                     .instrument(debug_span!("runner", c, s)),

@@ -1,78 +1,46 @@
+use crate::limit;
 use std::sync::{Arc, Weak};
-use tokio::{
-    sync::Semaphore,
-    time::{interval_at, Duration, Instant},
-};
+use tokio::{sync::Semaphore, time};
 use tracing::debug;
 
-#[derive(Copy, Clone)]
-pub struct RateLimit(Option<Inner>);
-
-#[derive(Copy, Clone)]
-struct Inner {
-    requests: usize,
-    window: Duration,
-}
-
 #[derive(Clone)]
-pub struct Acquire(Option<Arc<Semaphore>>);
+pub struct RateLimit(Arc<Semaphore>);
 
 pub struct Permit(Option<tokio::sync::OwnedSemaphorePermit>);
 
 // === impl RateLimit ===
 
-impl Default for RateLimit {
-    fn default() -> Self {
-        Self::unlimited()
-    }
-}
-
 impl RateLimit {
-    pub fn new(requests: usize, window: Duration) -> Self {
-        if requests == 0 || (window.as_secs() == 0 && window.subsec_nanos() == 0) {
-            Self::unlimited()
+    pub fn spawn(requests: usize, window: time::Duration) -> Option<Self> {
+        if requests > 0 && window > time::Duration::new(0, 0) {
+            // Initialize the semaphore permitting requests.
+            let sem = Arc::new(Semaphore::new(requests));
+            let weak = Arc::downgrade(&sem);
+            tokio::spawn(run(requests, window, weak));
+            Some(Self(sem))
         } else {
-            Self(Some(Inner { requests, window }))
-        }
-    }
-
-    pub fn unlimited() -> Self {
-        Self(None)
-    }
-
-    pub fn spawn(self) -> Acquire {
-        match self.0 {
-            None => Acquire(None),
-            Some(inner) => {
-                // Initialize the semaphore permitting requests.
-                let sem = Arc::new(Semaphore::new(inner.requests));
-                let weak = Arc::downgrade(&sem);
-                tokio::spawn(inner.run(weak));
-                Acquire(Some(sem))
-            }
+            None
         }
     }
 }
 
-impl Inner {
-    async fn run(self, weak: Weak<Semaphore>) {
-        let mut interval = interval_at(Instant::now() + self.window, self.window);
-        loop {
-            // Wait for the window to expire befor adding more permits.
-            interval.tick().await;
+async fn run(requests: usize, window: time::Duration, weak: Weak<Semaphore>) {
+    let mut interval = time::interval_at(time::Instant::now() + window, window);
+    loop {
+        // Wait for the window to expire befor adding more permits.
+        interval.tick().await;
 
-            // Refill the semaphore up to `requests`. If all of the acquire handles have been
-            // dropped, stop running.
-            match weak.upgrade() {
-                None => {
-                    debug!("Terminating task");
-                    return;
-                }
-                Some(sem) => {
-                    let permits = self.requests - sem.available_permits();
-                    debug!(permits, "Refilling rate limit");
-                    sem.add_permits(permits);
-                }
+        // Refill the semaphore up to `requests`. If all of the acquire handles have been
+        // dropped, stop running.
+        match weak.upgrade() {
+            None => {
+                debug!("Terminating task");
+                return;
+            }
+            Some(sem) => {
+                let permits = requests - sem.available_permits();
+                debug!(permits, "Refilling rate limit");
+                sem.add_permits(permits);
             }
         }
     }
@@ -80,15 +48,13 @@ impl Inner {
 
 // === impl Acquire ===
 
-impl Acquire {
-    pub async fn acquire(&self) -> Permit {
-        match self.0.clone() {
-            None => Permit(None),
-            Some(s) => {
-                let p = s.acquire_owned().await;
-                Permit(Some(p))
-            }
-        }
+#[async_trait::async_trait]
+impl limit::Acquire for RateLimit {
+    type Handle = Permit;
+
+    async fn acquire(&self) -> Permit {
+        let p = self.0.clone().acquire_owned().await;
+        Permit(Some(p))
     }
 }
 
