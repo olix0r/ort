@@ -121,49 +121,33 @@ impl Load {
         };
 
         let rate_limit = RateLimit::new(request_limit, request_limit_window).spawn();
-        let rsp_sizes = Arc::new(response_sizes);
-        let rng = SmallRng::from_entropy();
+        let runner = Runner::new(
+            clients,
+            streams,
+            total_requests.unwrap_or(0),
+            concurrency_limit,
+            rate_limit,
+            Arc::new(response_sizes),
+            SmallRng::from_entropy(),
+        );
 
         let targets = Some(target).into_iter().chain(targets).collect::<Vec<_>>();
         for target in targets.into_iter() {
             let histogram = histogram.clone();
-            let concurrency_limit = concurrency_limit.clone();
-            let rate_limit = rate_limit.clone();
-            let rsp_sizes = rsp_sizes.clone();
-            let rng = rng.clone();
+            let runner = runner.clone();
             match target {
                 Target::Grpc(target) => {
                     tokio::spawn(async move {
                         let connect = MakeGrpc::new(target, Duration::from_secs(1));
                         let connect = MakeMetrics::new(connect, histogram);
-                        Runner::new(
-                            clients,
-                            streams,
-                            total_requests.unwrap_or(0),
-                            concurrency_limit,
-                            rate_limit,
-                            rsp_sizes,
-                            rng,
-                        )
-                        .run(connect)
-                        .await
+                        runner.run(connect).await
                     });
                 }
                 Target::Http(target) => {
                     tokio::spawn(async move {
                         let connect = MakeHttp::new(target, connect_timeout, http_close);
                         let connect = MakeMetrics::new(connect, histogram);
-                        Runner::new(
-                            clients,
-                            streams,
-                            total_requests.unwrap_or(0),
-                            concurrency_limit,
-                            rate_limit,
-                            rsp_sizes,
-                            rng,
-                        )
-                        .run(connect)
-                        .await
+                        runner.run(connect).await
                     });
                 }
             }
