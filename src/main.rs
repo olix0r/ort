@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
     #[cfg(feature = "load")]
     if let Cmd::Load(l) = cmd {
-        return rt.block_on(l.run());
+        return rt.block_on(l.run(threads));
     }
 
     #[cfg(feature = "server")]

@@ -6,7 +6,6 @@ use tracing::warn;
 
 #[derive(Clone)]
 pub struct MakeGrpc {
-    target: http::Uri,
     backoff: Duration,
 }
 
@@ -14,18 +13,18 @@ pub struct MakeGrpc {
 pub struct Grpc(proto::ort_client::OrtClient<tonic::transport::Channel>);
 
 impl MakeGrpc {
-    pub fn new(target: http::Uri, backoff: Duration) -> Self {
-        Self { target, backoff }
+    pub fn new(backoff: Duration) -> Self {
+        Self { backoff }
     }
 }
 
 #[async_trait::async_trait]
-impl crate::MakeClient for MakeGrpc {
+impl crate::MakeClient<http::Uri> for MakeGrpc {
     type Client = Grpc;
 
-    async fn make_client(&mut self) -> Grpc {
+    async fn make_client(&mut self, target: http::Uri) -> Grpc {
         loop {
-            match proto::ort_client::OrtClient::connect(self.target.clone())
+            match proto::ort_client::OrtClient::connect(target.clone())
                 .compat()
                 .await
             {

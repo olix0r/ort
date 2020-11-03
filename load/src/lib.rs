@@ -33,10 +33,10 @@ use tracing::debug_span;
 use tracing_futures::Instrument;
 
 #[async_trait::async_trait]
-pub trait MakeClient {
+pub trait MakeClient<T> {
     type Client: Client;
 
-    async fn make_client(&mut self) -> Self::Client;
+    async fn make_client(&mut self, target: T) -> Self::Client;
 }
 
 #[async_trait::async_trait]
@@ -53,6 +53,9 @@ pub struct Load {
     #[structopt(long, parse(try_from_str), default_value = "0.0.0.0:8000")]
     admin_addr: SocketAddr,
 
+    #[structopt(long, default_value = "1")]
+    requests_per_client: usize,
+
     #[structopt(long, default_value = "0")]
     request_limit: usize,
 
@@ -65,14 +68,8 @@ pub struct Load {
     #[structopt(long)]
     total_requests: Option<usize>,
 
-    #[structopt(long, default_value = "1")]
-    clients: usize,
-
     #[structopt(long)]
     http_close: bool,
-
-    #[structopt(long, default_value = "1")]
-    streams: usize,
 
     #[structopt(long, default_value = "0")]
     concurrency_limit: usize,
@@ -85,18 +82,21 @@ pub struct Load {
     targets: Vec<Target>,
 }
 
+type Target = Flavor<::http::Uri, ::http::Uri>;
+
 #[derive(Clone, Debug)]
-enum Target {
-    Http(::http::Uri),
-    Grpc(::http::Uri),
+pub enum Flavor<H, G> {
+    Http(H),
+    Grpc(G),
 }
 
+// === impl Load ===C
+
 impl Load {
-    pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
+    pub async fn run(self, threads: usize) -> Result<(), Box<dyn std::error::Error + 'static>> {
         let Self {
             admin_addr,
-            clients,
-            streams,
+            requests_per_client,
             connect_timeout,
             http_close,
             concurrency_limit,
@@ -108,7 +108,7 @@ impl Load {
             targets,
         } = self;
 
-        if clients == 0 || streams == 0 {
+        if requests_per_client == 0 {
             return Ok(());
         }
 
@@ -123,34 +123,27 @@ impl Load {
 
         let rate_limit = RateLimit::spawn(request_limit, request_limit_window);
         let runner = Runner::new(
-            clients,
-            streams,
+            requests_per_client,
             total_requests.unwrap_or(0),
             (concurrency_limit, rate_limit),
             Arc::new(response_sizes),
             SmallRng::from_entropy(),
         );
 
+        let connect = {
+            let http = MakeHttp::new(connect_timeout, http_close);
+            let grpc = MakeGrpc::new(Duration::from_secs(1));
+            MakeMetrics::new((http, grpc), histogram)
+        };
+
         let targets = Some(target).into_iter().chain(targets).collect::<Vec<_>>();
-        for target in targets.into_iter() {
-            let histogram = histogram.clone();
-            let runner = runner.clone();
-            match target {
-                Target::Grpc(target) => {
-                    tokio::spawn(async move {
-                        let connect = MakeGrpc::new(target, Duration::from_secs(1));
-                        let connect = MakeMetrics::new(connect, histogram);
-                        runner.run(connect).await
-                    });
-                }
-                Target::Http(target) => {
-                    tokio::spawn(async move {
-                        let connect = MakeHttp::new(target, connect_timeout, http_close);
-                        let connect = MakeMetrics::new(connect, histogram);
-                        runner.run(connect).await
-                    });
-                }
-            }
+        for id in 0..threads {
+            tokio::spawn(
+                runner
+                    .clone()
+                    .run(connect.clone(), targets.clone())
+                    .instrument(debug_span!("worker", %id)),
+            );
         }
 
         tokio::spawn(
@@ -174,6 +167,49 @@ impl Load {
     }
 }
 
+// === impl Flavor ===
+
+#[async_trait::async_trait]
+impl<H, G> MakeClient<Target> for (H, G)
+where
+    H: MakeClient<::http::Uri> + Send + Sync + 'static,
+    H::Client: Send + Sync + 'static,
+    G: MakeClient<::http::Uri> + Send + Sync + 'static,
+    G::Client: Send + Sync + 'static,
+{
+    type Client = Flavor<H::Client, G::Client>;
+
+    async fn make_client(&mut self, target: Target) -> Self::Client {
+        match target {
+            Target::Http(t) => {
+                let c = self.0.make_client(t).await;
+                Flavor::Http(c)
+            }
+            Target::Grpc(t) => {
+                let c = self.1.make_client(t).await;
+                Flavor::Grpc(c)
+            }
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl<H, G> Client for Flavor<H, G>
+where
+    H: Client + Send + Sync + 'static,
+    G: Client + Send + Sync + 'static,
+{
+    async fn get(
+        &mut self,
+        spec: proto::ResponseSpec,
+    ) -> Result<proto::ResponseReply, tonic::Status> {
+        match self {
+            Flavor::Http(h) => h.get(spec).await,
+            Flavor::Grpc(g) => g.get(spec).await,
+        }
+    }
+}
+
 // === impl Target ===
 
 impl FromStr for Target {
@@ -186,6 +222,21 @@ impl FromStr for Target {
             Some("http") => Ok(Target::Http(uri)),
             Some(scheme) => Err(UnsupportedScheme(scheme.to_string()).into()),
         }
+    }
+}
+
+impl AsRef<::http::Uri> for Target {
+    fn as_ref(&self) -> &::http::Uri {
+        match self {
+            Flavor::Http(h) => &h,
+            Flavor::Grpc(g) => &g,
+        }
+    }
+}
+
+impl std::fmt::Display for Target {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_ref().fmt(f)
     }
 }
 

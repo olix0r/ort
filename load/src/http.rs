@@ -4,7 +4,6 @@ use tokio_compat_02::FutureExt;
 
 #[derive(Clone)]
 pub struct MakeHttp {
-    target: http::Uri,
     close: bool,
     connect_timeout: Option<Duration>,
 }
@@ -17,9 +16,8 @@ pub struct Http {
 }
 
 impl MakeHttp {
-    pub fn new(target: http::Uri, connect_timeout: Option<Duration>, close: bool) -> Self {
+    pub fn new(connect_timeout: Option<Duration>, close: bool) -> Self {
         Self {
-            target,
             connect_timeout,
             close,
         }
@@ -27,16 +25,16 @@ impl MakeHttp {
 }
 
 #[async_trait::async_trait]
-impl crate::MakeClient for MakeHttp {
+impl crate::MakeClient<http::Uri> for MakeHttp {
     type Client = Http;
 
-    async fn make_client(&mut self) -> Http {
+    async fn make_client(&mut self, target: http::Uri) -> Http {
         let mut connect = hyper::client::HttpConnector::new();
         connect.set_connect_timeout(self.connect_timeout.clone());
         connect.set_nodelay(true);
         connect.set_reuse_address(true);
         Http {
-            target: self.target.clone(),
+            target,
             client: hyper::Client::builder().build(connect),
             close: self.close,
         }

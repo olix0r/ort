@@ -23,15 +23,16 @@ impl<M> MakeMetrics<M> {
 }
 
 #[async_trait::async_trait]
-impl<M> MakeClient for MakeMetrics<M>
+impl<M, T> MakeClient<T> for MakeMetrics<M>
 where
-    M: MakeClient + Send + 'static,
+    T: Send + 'static,
+    M: MakeClient<T> + Send + 'static,
     M::Client: Send + 'static,
 {
     type Client = Metrics<M::Client>;
 
-    async fn make_client(&mut self) -> Self::Client {
-        let inner = self.inner.make_client().await;
+    async fn make_client(&mut self, t: T) -> Self::Client {
+        let inner = self.inner.make_client(t).await;
         let histogram = self.histogram.clone();
         Metrics { inner, histogram }
     }
