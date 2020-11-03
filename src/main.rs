@@ -32,6 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
 
     let Ort { threads, cmd } = Ort::from_args();
 
+    let threads = threads.unwrap_or_else(num_cpus::get);
     let rt = {
         let mut rt = rt::Builder::new_multi_thread();
         rt.enable_all();
@@ -41,10 +42,8 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             let id = ID.fetch_add(1, Ordering::SeqCst);
             format!("ort-{}", id)
         });
-        if let Some(t) = threads {
-            debug!(threads = %t, "Initializing runtime");
-            rt.worker_threads(t);
-        }
+        debug!(%threads, "Initializing runtime");
+        rt.worker_threads(threads);
         rt.build()?
     };
 

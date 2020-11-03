@@ -676,6 +676,7 @@ checksum = "260e51e7efe62b592207e9e13a68e43692a7a279171d6ba57abd208bf23645ad"
 name = "ort"
 version = "0.1.2"
 dependencies = [
+ "num_cpus",
  "ort-load",
  "ort-server",
  "structopt",

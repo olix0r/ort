@@ -19,6 +19,7 @@ server = ["ort-server"]
 rustfmt = ["ort-load/rustfmt", "ort-server/rustfmt"]
 
 [dependencies]
+num_cpus = "1"
 ort-load = { path = "./load", optional = true }
 ort-server = { path = "./server", optional = true }
 structopt = "0.3"
