@@ -35,6 +35,9 @@ spec:
         - name: main
           image: {{ $img }}
           args:
+          {{- if $load.threads }}
+            - threads={{ $load.threads }}
+          {{- end }}
             - load
           {{- range $f, $v := $load.flags }}
             - --{{ kebabcase $f }}={{ $v }}

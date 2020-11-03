@@ -8,7 +8,7 @@ protocols:
 
 load:
   replicas: 1
-  linkerdInject: true
+  threads: 3
   linkerd: {}
   flags: {}
     #requestsPerClient: 1
@@ -19,9 +19,9 @@ load:
     #responseSizes: 0=1024,100=1048576
 
 server:
+  threads: 1
   services: 1
   replicas: 1
-  linkerdInject: true
   linkerd: {}
 
 linkerd:

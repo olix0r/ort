@@ -55,7 +55,11 @@ spec:
       containers:
         - name: main
           image: {{$img}}
-          args: ["server"]
+          args:
+          {{- if $server.threads }}
+            - threads={{ $server.threads }}
+          {{- end }}
+            - server
           ports:
           {{- range $name, $port := $protocols }}
           {{-   if $port }}
