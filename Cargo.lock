@@ -681,6 +681,7 @@ dependencies = [
  "structopt",
  "tokio 0.3.2",
  "tokio-compat-02",
+ "tracing",
  "tracing-subscriber",
 ]
 
