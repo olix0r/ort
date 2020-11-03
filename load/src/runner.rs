@@ -4,7 +4,7 @@ use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
 };
-use tracing::{debug_span, trace};
+use tracing::{debug, debug_span, info, trace};
 
 #[derive(Clone)]
 pub struct Runner<L> {
@@ -65,13 +65,16 @@ impl<L: Acquire> Runner<L> {
             let _enter = span.enter();
 
             let client = connect.make_client(target.clone()).await;
-            for _ in 0..requests_per_client {
+            debug!(%requests_per_client, "Sending requests");
+
+            for r in 0..requests_per_client {
+                let permit = limit.acquire().await;
                 if let Some(lim) = total_requests.as_ref() {
                     if lim.issued.fetch_add(1, Ordering::Release) >= lim.limit {
+                        debug!(limit = %lim.limit, "Request limit reached");
                         return;
                     }
                 }
-                let permit = limit.acquire().await;
                 trace!("Acquired permit");
 
                 // TODO generate request params (latency, error).
@@ -86,9 +89,15 @@ impl<L: Acquire> Runner<L> {
                                 size: rsp_sz as i64,
                             },
                         )),
-                        ..Default::default()
+                        ..proto::ResponseSpec::default()
                     };
-                    let _ = client.get(spec).await;
+                    trace!(%rsp_sz, request = %r, "Sending request");
+                    match client.get(spec).await {
+                        Ok(rsp) => {
+                            trace!(request = %r, rsp_sz = rsp.data.len(), "Request complete")
+                        }
+                        Err(error) => info!(%error, "Request failed"),
+                    }
                     drop(permit);
                 });
             }

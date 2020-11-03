@@ -55,6 +55,9 @@ spec:
       containers:
         - name: main
           image: {{$img}}
+          env:
+            - name: RUST_LOG
+              value: {{ $server.log | default "info" | quote }}
           args:
           {{- if $server.threads }}
             - --threads={{ $server.threads }}

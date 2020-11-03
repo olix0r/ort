@@ -7,6 +7,7 @@ protocols:
   http: 8080
 
 load:
+  #log: info
   replicas: 1
   threads: 3
   linkerd: {}
@@ -19,6 +20,7 @@ load:
     #responseSizes: 0=1024,100=1048576
 
 server:
+  #log: debug
   threads: 1
   services: 1
   replicas: 1

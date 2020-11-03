@@ -85,8 +85,11 @@ impl crate::Client for Http {
             .compat()
             .await
             .map_err(|e| tonic::Status::internal(e.to_string()))?;
-        if rsp.status() != http::StatusCode::OK {
-            return Err(tonic::Status::internal("Non-200 response received"));
+        if !rsp.status().is_success() {
+            return Err(tonic::Status::internal(format!(
+                "Unexpected response status: {}",
+                rsp.status()
+            )));
         }
         let data = hyper::body::to_bytes(rsp.into_body())
             .await

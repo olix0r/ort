@@ -34,6 +34,9 @@ spec:
       containers:
         - name: main
           image: {{ $img }}
+          env:
+            - name: RUST_LOG
+              value: {{ $load.log | default "info" | quote }}
           args:
           {{- if $load.threads }}
             - --threads={{ $load.threads }}
