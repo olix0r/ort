@@ -40,7 +40,7 @@ pub trait MakeClient<T> {
 }
 
 #[async_trait::async_trait]
-pub trait Client {
+pub trait Client: Clone + Send + 'static {
     async fn get(
         &mut self,
         spec: proto::ResponseSpec,
@@ -71,8 +71,8 @@ pub struct Load {
     #[structopt(long)]
     http_close: bool,
 
-    #[structopt(long, default_value = "0")]
-    concurrency_limit: usize,
+    #[structopt(long)]
+    concurrency_limit: Option<usize>,
 
     #[structopt(long, default_value = "100=0")]
     response_sizes: Distribution,
@@ -115,11 +115,9 @@ impl Load {
         let histogram = Arc::new(RwLock::new(hdrhistogram::Histogram::new(3).unwrap()));
         let admin = Admin::new(histogram.clone());
 
-        let concurrency_limit = if concurrency_limit == 0 {
-            None
-        } else {
-            Some(Arc::new(Semaphore::new(concurrency_limit)))
-        };
+        let concurrency_limit = Arc::new(Semaphore::new(
+            concurrency_limit.filter(|c| *c > 0).unwrap_or(threads * 2),
+        ));
 
         let rate_limit = RateLimit::spawn(request_limit, request_limit_window);
         let runner = Runner::new(
@@ -137,14 +135,7 @@ impl Load {
         };
 
         let targets = Some(target).into_iter().chain(targets).collect::<Vec<_>>();
-        for id in 0..threads {
-            tokio::spawn(
-                runner
-                    .clone()
-                    .run(connect.clone(), targets.clone())
-                    .instrument(debug_span!("worker", %id)),
-            );
-        }
+        tokio::spawn(runner.run(connect, targets));
 
         tokio::spawn(
             async move {
