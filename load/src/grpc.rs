@@ -1,11 +1,11 @@
 use crate::proto;
-use std::time::Duration;
-use tokio::time::sleep;
+use tokio::time::{sleep, timeout, Duration};
 use tokio_compat_02::FutureExt;
 use tracing::warn;
 
 #[derive(Clone)]
 pub struct MakeGrpc {
+    connect_timeout: Duration,
     backoff: Duration,
 }
 
@@ -13,8 +13,11 @@ pub struct MakeGrpc {
 pub struct Grpc(proto::ort_client::OrtClient<tonic::transport::Channel>);
 
 impl MakeGrpc {
-    pub fn new(backoff: Duration) -> Self {
-        Self { backoff }
+    pub fn new(connect_timeout: Duration, backoff: Duration) -> Self {
+        Self {
+            connect_timeout,
+            backoff,
+        }
     }
 }
 
@@ -24,14 +27,15 @@ impl crate::MakeClient<http::Uri> for MakeGrpc {
 
     async fn make_client(&mut self, target: http::Uri) -> Grpc {
         loop {
-            match proto::ort_client::OrtClient::connect(target.clone())
-                .compat()
-                .await
-            {
-                Ok(client) => return Grpc(client),
-                Err(error) => {
+            let connect = proto::ort_client::OrtClient::connect(target.clone()).compat();
+            match timeout(self.connect_timeout, connect).await {
+                Ok(Ok(client)) => return Grpc(client),
+                Ok(Err(error)) => {
                     warn!(%error, "Failed to connect");
                     sleep(self.backoff).await;
+                }
+                Err(_) => {
+                    warn!("Connection timed out");
                 }
             }
         }

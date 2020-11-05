@@ -1,11 +1,12 @@
 use crate::proto::{self, response_spec as spec};
-use std::{convert::TryFrom, time::Duration};
+use std::convert::TryFrom;
+use tokio::time::Duration;
 use tokio_compat_02::FutureExt;
 
 #[derive(Clone)]
 pub struct MakeHttp {
     close: bool,
-    connect_timeout: Option<Duration>,
+    connect_timeout: Duration,
 }
 
 #[derive(Clone)]
@@ -16,7 +17,7 @@ pub struct Http {
 }
 
 impl MakeHttp {
-    pub fn new(connect_timeout: Option<Duration>, close: bool) -> Self {
+    pub fn new(connect_timeout: Duration, close: bool) -> Self {
         Self {
             connect_timeout,
             close,
@@ -30,7 +31,7 @@ impl crate::MakeClient<http::Uri> for MakeHttp {
 
     async fn make_client(&mut self, target: http::Uri) -> Http {
         let mut connect = hyper::client::HttpConnector::new();
-        connect.set_connect_timeout(self.connect_timeout.clone());
+        connect.set_connect_timeout(Some(self.connect_timeout));
         connect.set_nodelay(true);
         connect.set_reuse_address(true);
         Http {

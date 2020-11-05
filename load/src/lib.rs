@@ -9,6 +9,7 @@ mod metrics;
 mod rate_limit;
 mod report;
 mod runner;
+mod timeout;
 
 mod proto {
     tonic::include_proto!("ort.olix0r.net");
@@ -16,10 +17,10 @@ mod proto {
 
 use self::{
     admin::Admin, distribution::Distribution, grpc::MakeGrpc, http::MakeHttp, metrics::MakeMetrics,
-    rate_limit::RateLimit, runner::Runner,
+    rate_limit::RateLimit, runner::Runner, timeout::MakeRequestTimeout,
 };
 use rand::{rngs::SmallRng, SeedableRng};
-use std::{net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, str::FromStr, sync::Arc};
 use structopt::StructOpt;
 use tokio::{
     signal::{
@@ -27,6 +28,7 @@ use tokio::{
         unix::{signal, SignalKind},
     },
     sync::{RwLock, Semaphore},
+    time::Duration,
 };
 use tokio_compat_02::FutureExt;
 use tracing::debug_span;
@@ -62,8 +64,11 @@ pub struct Load {
     #[structopt(long, parse(try_from_str = parse_duration), default_value = "1s")]
     request_limit_window: Duration,
 
-    #[structopt(long, parse(try_from_str = parse_duration))]
-    connect_timeout: Option<Duration>,
+    #[structopt(long, parse(try_from_str = parse_duration), default_value = "10s")]
+    request_timeout: Duration,
+
+    #[structopt(long, parse(try_from_str = parse_duration), default_value = "10s")]
+    connect_timeout: Duration,
 
     #[structopt(long)]
     total_requests: Option<usize>,
@@ -98,6 +103,7 @@ impl Load {
             admin_addr,
             requests_per_client,
             connect_timeout,
+            request_timeout,
             http_close,
             concurrency_limit,
             request_limit,
@@ -130,8 +136,9 @@ impl Load {
 
         let connect = {
             let http = MakeHttp::new(connect_timeout, http_close);
-            let grpc = MakeGrpc::new(Duration::from_secs(1));
-            MakeMetrics::new((http, grpc), histogram)
+            let grpc = MakeGrpc::new(connect_timeout, Duration::from_secs(1));
+            let timeout = MakeRequestTimeout::new((http, grpc), request_timeout);
+            MakeMetrics::new(timeout, histogram)
         };
 
         let targets = Some(target).into_iter().chain(targets).collect::<Vec<_>>();
