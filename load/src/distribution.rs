@@ -35,21 +35,47 @@ impl std::str::FromStr for Distribution {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut pairs = Vec::new();
-        for pv in s.split(',') {
-            let mut pv = pv.splitn(2, '=');
-            match (pv.next(), pv.next()) {
-                (Some(p), Some(v)) => {
+
+        let pvs = s.split(',').collect::<Vec<_>>();
+        if pvs.len() == 1 {
+            // If there is only a single item, it may not necessarily have a percentile.
+            let pv = match pvs[0].splitn(2, '=').collect::<Vec<_>>().as_slice() {
+                [v] => {
+                    let v = v
+                        .parse::<u64>()
+                        .map_err(|_| InvalidDistribution::InvalidValue)?;
+                    (0f32, v)
+                }
+                [p, v] => {
                     let p = p
                         .parse::<f32>()
                         .map_err(|_| InvalidDistribution::InvalidPercentile)?;
                     let v = v
                         .parse::<u64>()
                         .map_err(|_| InvalidDistribution::InvalidValue)?;
-                    pairs.push((p, v));
+                    (p, v)
                 }
                 _ => return Err(InvalidDistribution::InvalidPercentile)?,
+            };
+            pairs.push(pv);
+        } else {
+            for pv in pvs {
+                let mut pv = pv.splitn(2, '=');
+                match (pv.next(), pv.next()) {
+                    (Some(p), Some(v)) => {
+                        let p = p
+                            .parse::<f32>()
+                            .map_err(|_| InvalidDistribution::InvalidPercentile)?;
+                        let v = v
+                            .parse::<u64>()
+                            .map_err(|_| InvalidDistribution::InvalidValue)?;
+                        pairs.push((p, v));
+                    }
+                    _ => return Err(InvalidDistribution::InvalidPercentile)?,
+                }
             }
         }
+
         Self::build(pairs)
     }
 }
@@ -236,5 +262,23 @@ mod tests {
         assert_eq!(d.min(), 1000);
         assert_eq!(d.try_get(50).unwrap(), 1500);
         assert_eq!(d.max(), 2000);
+    }
+
+    #[test]
+    fn parse() {
+        let d = "123".parse::<Distribution>().unwrap();
+        assert_eq!(d.min(), 123);
+        assert_eq!(d.try_get(50).unwrap(), 123);
+        assert_eq!(d.max(), 123);
+
+        let d = "50=123".parse::<Distribution>().unwrap();
+        assert_eq!(d.min(), 0);
+        assert_eq!(d.try_get(50).unwrap(), 123);
+        assert_eq!(d.max(), 123);
+
+        let d = "0=1,50=123,100=234".parse::<Distribution>().unwrap();
+        assert_eq!(d.min(), 1);
+        assert_eq!(d.try_get(50).unwrap(), 123);
+        assert_eq!(d.max(), 234);
     }
 }

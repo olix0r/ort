@@ -56,7 +56,7 @@ pub struct Load {
     admin_addr: SocketAddr,
 
     #[structopt(long)]
-    requests_per_target: Optin<usize>,
+    requests_per_target: Option<usize>,
 
     #[structopt(long, default_value = "0")]
     request_limit: usize,
