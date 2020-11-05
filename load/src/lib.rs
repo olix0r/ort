@@ -55,8 +55,8 @@ pub struct Load {
     #[structopt(long, parse(try_from_str), default_value = "0.0.0.0:8000")]
     admin_addr: SocketAddr,
 
-    #[structopt(long, default_value = "1")]
-    requests_per_client: usize,
+    #[structopt(long)]
+    requests_per_target: Optin<usize>,
 
     #[structopt(long, default_value = "0")]
     request_limit: usize,
@@ -101,7 +101,7 @@ impl Load {
     pub async fn run(self, threads: usize) -> Result<(), Box<dyn std::error::Error + 'static>> {
         let Self {
             admin_addr,
-            requests_per_client,
+            requests_per_target,
             connect_timeout,
             request_timeout,
             http_close,
@@ -114,10 +114,6 @@ impl Load {
             targets,
         } = self;
 
-        if requests_per_client == 0 {
-            return Ok(());
-        }
-
         let histogram = Arc::new(RwLock::new(hdrhistogram::Histogram::new(3).unwrap()));
         let admin = Admin::new(histogram.clone());
 
@@ -127,7 +123,7 @@ impl Load {
 
         let rate_limit = RateLimit::spawn(request_limit, request_limit_window);
         let runner = Runner::new(
-            requests_per_client,
+            requests_per_target.unwrap_or(0),
             total_requests.unwrap_or(0),
             (concurrency_limit, rate_limit),
             Arc::new(response_sizes),
