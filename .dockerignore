@@ -3,3 +3,7 @@ Dockerfile*
 **/target
 target
 .cargo
+templates
+Chart.yaml
+values.yaml
+README.md

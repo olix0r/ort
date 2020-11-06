@@ -1,8 +1,8 @@
 {{- $ns := .Release.Namespace }}
 {{- $img := .Values.image }}
 {{- $replicas := int .Values.server.replicas }}
-{{- $linkerd := .Values.linkerd }}
 {{- $server := .Values.server }}
+{{- $linkerd := deepCopy .Values.linkerd | merge $server.linkerd }}
 {{- $protocols := .Values.protocols }}
 {{- range $i, $e := until (.Values.server.services | int) }}
 ---
@@ -50,7 +50,7 @@ spec:
         ort.olix0r.net/role: server
         ort.olix0r.net/instance: {{quote $i}}
       annotations:
-{{ deepCopy $linkerd | merge $server.linkerd | include "ort.linkerd" | indent 8 }}
+{{ $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       containers:
         - name: main
@@ -58,6 +58,10 @@ spec:
           env:
             - name: RUST_LOG
               value: {{ $server.log | default "info" | quote }}
+          {{- if eq $linkerd.inject "disabled" }}
+            - name: LINKERD_DISABLED
+              value: "true"
+          {{- end }}
           args:
           {{- if $server.threads }}
             - --threads={{ $server.threads }}
