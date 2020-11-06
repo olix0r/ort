@@ -1,4 +1,4 @@
-use crate::{limit::Acquire, proto, Client, Distribution, MakeClient, Target};
+use crate::{latency, limit::Acquire, proto, Client, Distribution, MakeClient, Target};
 use rand::{distributions::Distribution as _, rngs::SmallRng};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -12,6 +12,7 @@ pub struct Runner<L> {
     requests_per_target: usize,
     limit: L,
     total_requests: Countdown,
+    response_latencies: Arc<latency::Distribution>,
     response_sizes: Arc<Distribution>,
     rng: SmallRng,
 }
@@ -47,6 +48,7 @@ impl<L: Acquire> Runner<L> {
         requests_per_target: usize,
         total_requests: usize,
         limit: L,
+        response_latencies: Arc<latency::Distribution>,
         response_sizes: Arc<Distribution>,
         rng: SmallRng,
     ) -> Self {
@@ -55,6 +57,7 @@ impl<L: Acquire> Runner<L> {
             requests_per_target,
             limit,
             total_requests,
+            response_latencies,
             response_sizes,
             rng,
         }
@@ -69,6 +72,7 @@ impl<L: Acquire> Runner<L> {
             requests_per_target,
             limit,
             total_requests,
+            response_latencies,
             response_sizes,
             rng,
         } = self;
@@ -83,6 +87,7 @@ impl<L: Acquire> Runner<L> {
 
             let limit = limit.clone();
             let requests_per_target = requests_per_target.clone();
+            let response_latencies = response_latencies.clone();
             let response_sizes = response_sizes.clone();
             let total_requests = total_requests.clone();
             let mut rng = rng.clone();
@@ -107,11 +112,13 @@ impl<L: Acquire> Runner<L> {
                     trace!("Acquired permit");
 
                     // TODO generate request params (latency, error).
+                    let latency: ::prost_types::Duration = response_latencies.sample(&mut rng);
                     let rsp_sz = response_sizes.sample(&mut rng);
                     let mut client = client.clone();
                     tokio::spawn(
                         async move {
                             let spec = proto::ResponseSpec {
+                                latency: latency.into(),
                                 result: Some(proto::response_spec::Result::Success(
                                     proto::response_spec::Success {
                                         size: rsp_sz as i64,

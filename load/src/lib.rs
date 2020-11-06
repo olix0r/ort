@@ -4,6 +4,7 @@ mod admin;
 mod distribution;
 mod grpc;
 mod http;
+mod latency;
 mod limit;
 mod metrics;
 mod rate_limit;
@@ -79,8 +80,11 @@ pub struct Load {
     #[structopt(long)]
     concurrency_limit: Option<usize>,
 
-    #[structopt(long, default_value = "100=0")]
-    response_sizes: Distribution,
+    #[structopt(long, default_value = "0")]
+    response_latency: latency::Distribution,
+
+    #[structopt(long, default_value = "0")]
+    response_size: Distribution,
 
     target: Target,
 
@@ -108,7 +112,8 @@ impl Load {
             concurrency_limit,
             request_limit,
             request_limit_window,
-            response_sizes,
+            response_latency,
+            response_size,
             total_requests,
             target,
             targets,
@@ -126,7 +131,8 @@ impl Load {
             requests_per_target.unwrap_or(0),
             total_requests.unwrap_or(0),
             (concurrency_limit, rate_limit),
-            Arc::new(response_sizes),
+            Arc::new(response_latency),
+            Arc::new(response_size),
             SmallRng::from_entropy(),
         );
 
@@ -251,8 +257,8 @@ fn parse_duration(s: &str) -> Result<Duration, InvalidDuration> {
     use regex::Regex;
 
     let re = Regex::new(r"^\s*(\d+)(ms|s|m|h|d)?\s*$").expect("duration regex");
-    let cap = re.captures(s).ok_or(InvalidDuration)?;
-    let magnitude = cap[1].parse().map_err(|_| InvalidDuration)?;
+    let cap = re.captures(s).ok_or(InvalidDuration(()))?;
+    let magnitude = cap[1].parse().map_err(|_| InvalidDuration(()))?;
     match cap.get(2).map(|m| m.as_str()) {
         None if magnitude == 0 => Ok(Duration::from_secs(0)),
         Some("ms") => Ok(Duration::from_millis(magnitude)),
@@ -260,12 +266,12 @@ fn parse_duration(s: &str) -> Result<Duration, InvalidDuration> {
         Some("m") => Ok(Duration::from_secs(magnitude * 60)),
         Some("h") => Ok(Duration::from_secs(magnitude * 60 * 60)),
         Some("d") => Ok(Duration::from_secs(magnitude * 60 * 60 * 24)),
-        _ => Err(InvalidDuration),
+        _ => Err(InvalidDuration(())),
     }
 }
 
 #[derive(Copy, Clone, Debug)]
-struct InvalidDuration;
+pub struct InvalidDuration(());
 
 impl std::fmt::Display for InvalidDuration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
