@@ -55,8 +55,10 @@ impl crate::Client for Http {
         if let Some(a) = self.target.authority() {
             uri = uri.authority(a.clone());
         }
-        let latency_ms = if let Some(l) = spec.latency {
-            let d = std::time::Duration::try_from(l).unwrap();
+        let latency_ms = if let Some(d) = spec
+            .latency
+            .and_then(|l| std::time::Duration::try_from(l).ok())
+        {
             (d.as_millis() as i64).max(0)
         } else {
             0
