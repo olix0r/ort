@@ -52,28 +52,31 @@ impl crate::Client for Http {
         if let Some(s) = self.target.scheme() {
             uri = uri.scheme(s.clone());
         }
+
         if let Some(a) = self.target.authority() {
             uri = uri.authority(a.clone());
         }
-        let latency_ms = if let Some(d) = spec
-            .latency
-            .and_then(|l| std::time::Duration::try_from(l).ok())
-        {
-            (d.as_millis() as i64).max(0)
-        } else {
-            0
-        };
-        tracing::trace!(latency_ms);
-        let size = match spec.result {
-            Some(spec::Result::Success(spec::Success { size })) => size,
-            _ => 0,
-        };
-        uri = uri.path_and_query(
-            http::uri::PathAndQuery::try_from(
-                format!("/?latency_ms={}&size={}", latency_ms, size).as_str(),
+
+        uri = {
+            let latency_ms = spec
+                .latency
+                .and_then(|l| Duration::try_from(l).ok())
+                .unwrap_or_default()
+                .as_millis() as i64;
+
+            let size = match spec.result {
+                Some(spec::Result::Success(spec::Success { size })) => size,
+                _ => 0,
+            };
+
+            tracing::trace!(latency_ms, size);
+            uri.path_and_query(
+                http::uri::PathAndQuery::try_from(
+                    format!("/?latency_ms={}&size={}", latency_ms, size).as_str(),
+                )
+                .expect("query must be valid"),
             )
-            .unwrap(),
-        );
+        };
 
         let mut req = http::Request::builder();
         if self.close {
