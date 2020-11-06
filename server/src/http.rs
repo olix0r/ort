@@ -41,6 +41,7 @@ async fn handle<B: hyper::body::HttpBody>(
 
         // Start sleeping before generating the body so that time isn't added to
         // our latency.
+        tracing::trace!(?latency, "Sleeping");
         let sleep = time::delay_for(latency);
 
         let mut data = Vec::<u8>::with_capacity(rsp_size);

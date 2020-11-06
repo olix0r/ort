@@ -56,10 +56,12 @@ impl crate::Client for Http {
             uri = uri.authority(a.clone());
         }
         let latency_ms = if let Some(l) = spec.latency {
-            (l.seconds.saturating_mul(1000) + l.nanos as i64).max(0)
+            let d = std::time::Duration::try_from(l).unwrap();
+            (d.as_millis() as i64).max(0)
         } else {
             0
         };
+        tracing::trace!(latency_ms);
         let size = match spec.result {
             Some(spec::Result::Success(spec::Success { size })) => size,
             _ => 0,

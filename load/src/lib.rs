@@ -256,16 +256,13 @@ impl std::error::Error for UnsupportedScheme {}
 fn parse_duration(s: &str) -> Result<Duration, InvalidDuration> {
     use regex::Regex;
 
-    let re = Regex::new(r"^\s*(\d+)(ms|s|m|h|d)?\s*$").expect("duration regex");
+    let re = Regex::new(r"^\s*(\d+)(ms|s)?\s*$").expect("duration regex");
     let cap = re.captures(s).ok_or(InvalidDuration(()))?;
     let magnitude = cap[1].parse().map_err(|_| InvalidDuration(()))?;
     match cap.get(2).map(|m| m.as_str()) {
-        None if magnitude == 0 => Ok(Duration::from_secs(0)),
+        None if magnitude == 0 => Ok(Duration::from_millis(0)),
         Some("ms") => Ok(Duration::from_millis(magnitude)),
         Some("s") => Ok(Duration::from_secs(magnitude)),
-        Some("m") => Ok(Duration::from_secs(magnitude * 60)),
-        Some("h") => Ok(Duration::from_secs(magnitude * 60 * 60)),
-        Some("d") => Ok(Duration::from_secs(magnitude * 60 * 60 * 24)),
         _ => Err(InvalidDuration(())),
     }
 }
