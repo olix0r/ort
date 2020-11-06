@@ -1,12 +1,14 @@
 use indexmap::IndexMap;
+use std::str::FromStr;
 
 /// Max: 1_000_000
 #[derive(Copy, Clone, Debug, Hash, PartialOrd, PartialEq, Ord, Eq)]
 pub struct Percentile(u32);
 
-pub struct Distribution {
+pub struct Distribution<T = u64> {
     // A sorted list of percentile-value pairs.
     percentiles: IndexMap<Percentile, u64>,
+    _marker: std::marker::PhantomData<T>,
 }
 
 #[derive(Debug)]
@@ -21,28 +23,30 @@ pub struct InvalidPercentile(());
 
 // === impl Distribution ===
 
-impl Default for Distribution {
+impl<T: Default + Into<u64>> Default for Distribution<T> {
     fn default() -> Self {
         let mut percentiles = IndexMap::new();
-        percentiles.entry(Percentile::MIN).or_insert(0);
-        percentiles.entry(Percentile::MAX).or_insert(0);
-        Self { percentiles }
+        let v = T::default().into();
+        percentiles.entry(Percentile::MIN).or_insert(v);
+        percentiles.entry(Percentile::MAX).or_insert(v);
+        Self {
+            percentiles,
+            _marker: std::marker::PhantomData,
+        }
     }
 }
 
-impl std::str::FromStr for Distribution {
+impl<T: FromStr + Default + Into<u64>> FromStr for Distribution<T> {
     type Err = InvalidDistribution;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut pairs = Vec::new();
-
         let pvs = s.split(',').collect::<Vec<_>>();
         if pvs.len() == 1 {
             // If there is only a single item, it may not necessarily have a percentile.
             let pv = match pvs[0].splitn(2, '=').collect::<Vec<_>>().as_slice() {
                 [v] => {
                     let v = v
-                        .parse::<u64>()
+                        .parse::<T>()
                         .map_err(|_| InvalidDistribution::InvalidValue)?;
                     (0f32, v)
                 }
@@ -51,14 +55,15 @@ impl std::str::FromStr for Distribution {
                         .parse::<f32>()
                         .map_err(|_| InvalidDistribution::InvalidPercentile)?;
                     let v = v
-                        .parse::<u64>()
+                        .parse::<T>()
                         .map_err(|_| InvalidDistribution::InvalidValue)?;
                     (p, v)
                 }
                 _ => return Err(InvalidDistribution::InvalidPercentile)?,
             };
-            pairs.push(pv);
+            Self::build(Some(pv))
         } else {
+            let mut pairs = Vec::new();
             for pv in pvs {
                 let mut pv = pv.splitn(2, '=');
                 match (pv.next(), pv.next()) {
@@ -67,21 +72,20 @@ impl std::str::FromStr for Distribution {
                             .parse::<f32>()
                             .map_err(|_| InvalidDistribution::InvalidPercentile)?;
                         let v = v
-                            .parse::<u64>()
+                            .parse::<T>()
                             .map_err(|_| InvalidDistribution::InvalidValue)?;
                         pairs.push((p, v));
                     }
                     _ => return Err(InvalidDistribution::InvalidPercentile)?,
                 }
             }
+            Self::build(pairs)
         }
-
-        Self::build(pairs)
     }
 }
 
-impl Distribution {
-    pub fn build<P>(pairs: impl IntoIterator<Item = (P, u64)>) -> Result<Self, InvalidDistribution>
+impl<T: Default + Into<u64>> Distribution<T> {
+    pub fn build<P>(pairs: impl IntoIterator<Item = (P, T)>) -> Result<Self, InvalidDistribution>
     where
         P: std::convert::TryInto<Percentile>,
     {
@@ -90,11 +94,13 @@ impl Distribution {
             let p = p
                 .try_into()
                 .map_err(|_| InvalidDistribution::InvalidPercentile)?;
-            percentiles.insert(p, v);
+            percentiles.insert(p, v.into());
         }
 
         // Ensure there is a minimum value in the distribution.
-        percentiles.entry(Percentile::MIN).or_insert(0);
+        percentiles
+            .entry(Percentile::MIN)
+            .or_insert(T::default().into());
         percentiles.sort_keys();
 
         // Ensure all values are in ascending order.
@@ -110,21 +116,28 @@ impl Distribution {
         let max_v = base_v;
         percentiles.entry(Percentile::MAX).or_insert(max_v);
 
-        Ok(Self { percentiles })
+        Ok(Self {
+            percentiles,
+            _marker: std::marker::PhantomData,
+        })
+    }
+}
+
+impl<T: From<u64>> Distribution<T> {
+    #[cfg(test)]
+    pub fn min(&self) -> T {
+        let v = self.percentiles.get(&Percentile::MIN).unwrap();
+        (*v).into()
     }
 
     #[cfg(test)]
-    pub fn min(&self) -> u64 {
-        *self.percentiles.get(&Percentile::MIN).unwrap()
+    pub fn max(&self) -> T {
+        let v = self.percentiles.get(&Percentile::MAX).unwrap();
+        (*v).into()
     }
 
     #[cfg(test)]
-    pub fn max(&self) -> u64 {
-        *self.percentiles.get(&Percentile::MAX).unwrap()
-    }
-
-    #[cfg(test)]
-    pub fn try_get<P>(&self, p: P) -> Result<u64, P::Error>
+    pub fn try_get<P>(&self, p: P) -> Result<T, P::Error>
     where
         P: std::convert::TryInto<Percentile>,
     {
@@ -132,12 +145,12 @@ impl Distribution {
         Ok(self.get(p))
     }
 
-    pub fn get(&self, Percentile(percentile): Percentile) -> u64 {
+    pub fn get(&self, Percentile(percentile): Percentile) -> T {
         let mut lower_p = 0u32;
         let mut lower_v = 0u64;
         for (Percentile(p), v) in self.percentiles.iter() {
             if *p == percentile {
-                return *v;
+                return (*v).into();
             }
 
             if *p > percentile {
@@ -150,7 +163,7 @@ impl Distribution {
                 } else {
                     0
                 };
-                return lower_v + added;
+                return (lower_v + added).into();
             }
 
             lower_p = *p;
@@ -161,8 +174,8 @@ impl Distribution {
     }
 }
 
-impl rand::distributions::Distribution<u64> for Distribution {
-    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> u64 {
+impl<T: From<u64>> rand::distributions::Distribution<T> for Distribution<T> {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> T {
         self.get(rng.gen())
     }
 }
@@ -253,12 +266,12 @@ mod tests {
 
     #[test]
     fn distributions() {
-        let d = Distribution::default();
+        let d = Distribution::<u64>::default();
         assert_eq!(d.min(), 0);
         assert_eq!(d.try_get(50).unwrap(), 0);
         assert_eq!(d.max(), 0);
 
-        let d = Distribution::build(vec![(0, 1000), (100, 2000)]).unwrap();
+        let d = Distribution::build(vec![(0, 1000u64), (100, 2000)]).unwrap();
         assert_eq!(d.min(), 1000);
         assert_eq!(d.try_get(50).unwrap(), 1500);
         assert_eq!(d.max(), 2000);
@@ -266,19 +279,53 @@ mod tests {
 
     #[test]
     fn parse() {
-        let d = "123".parse::<Distribution>().unwrap();
+        let d = "123".parse::<Distribution<u64>>().unwrap();
         assert_eq!(d.min(), 123);
         assert_eq!(d.try_get(50).unwrap(), 123);
         assert_eq!(d.max(), 123);
 
-        let d = "50=123".parse::<Distribution>().unwrap();
+        let d = "50=123".parse::<Distribution<u64>>().unwrap();
         assert_eq!(d.min(), 0);
         assert_eq!(d.try_get(50).unwrap(), 123);
         assert_eq!(d.max(), 123);
 
-        let d = "0=1,50=123,100=234".parse::<Distribution>().unwrap();
+        let d = "0=1,50=123,100=234".parse::<Distribution<u64>>().unwrap();
         assert_eq!(d.min(), 1);
         assert_eq!(d.try_get(50).unwrap(), 123);
         assert_eq!(d.max(), 234);
+
+        #[derive(Debug, Default, PartialEq, Eq)]
+        struct Dingus(u64);
+        impl From<u64> for Dingus {
+            fn from(n: u64) -> Self {
+                Self(n)
+            }
+        }
+        impl Into<u64> for Dingus {
+            fn into(self) -> u64 {
+                self.0
+            }
+        }
+        impl std::str::FromStr for Dingus {
+            type Err = ();
+            fn from_str(s: &str) -> Result<Self, ()> {
+                match s {
+                    "A" => Ok(Self(10)),
+                    "B" => Ok(Self(20)),
+                    "C" => Ok(Self(30)),
+                    "D" => Ok(Self(40)),
+                    _ => Err(()),
+                }
+            }
+        }
+
+        let d = "0=A,50=B,90=C,100=D"
+            .parse::<Distribution<Dingus>>()
+            .unwrap();
+        assert_eq!(d.min(), Dingus(10));
+        assert_eq!(d.try_get(50).unwrap(), Dingus(20));
+        assert_eq!(d.try_get(90).unwrap(), Dingus(30));
+        assert_eq!(d.try_get(95).unwrap(), Dingus(35));
+        assert_eq!(d.max(), Dingus(40));
     }
 }
