@@ -12,10 +12,6 @@ mod report;
 mod runner;
 mod timeout;
 
-mod proto {
-    tonic::include_proto!("ort.olix0r.net");
-}
-
 use self::{
     admin::Admin, distribution::Distribution, grpc::MakeGrpc, http::MakeHttp, metrics::MakeMetrics,
     rate_limit::RateLimit, runner::Runner, timeout::MakeRequestTimeout,

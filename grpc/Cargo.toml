@@ -1,0 +1,29 @@
+[package]
+name = "ort-grpc"
+version = "0.1.0"
+authors = ["Oliver Gould <ver@buoyant.io>"]
+edition = "2018"
+publish = false
+
+[features]
+# Generate code that is formatted.
+rustfmt = ["tonic-build/rustfmt"]
+
+[dependencies]
+async-trait = "0.1"
+http = "0.2"
+hyper = "0.13.3"
+indexmap = "1.0"
+ort-core = { path = "../core" }
+prost = "0.6"
+prost-types = "0.6"
+rand = { version = "0.7", features = ["small_rng"] }
+tokio = { version = "0.3", features = ["time"] }
+tokio_02 = {version = "0.2", package = "tokio", features = ["time"] }
+tokio-compat-02 = "0.1"
+tonic = { version = "0.3", default-features = false, features = ["prost", "codegen", "transport"] }
+tracing = "0.1"
+tracing-futures = "0.2"
+
+[build-dependencies]
+tonic-build = { version = "0.3", features = ["prost", "transport"], default-features = false }

@@ -1,32 +1,27 @@
-mod proto {
-    tonic::include_proto!("ort.olix0r.net");
-}
-
-pub use self::proto::{ort_server::Ort, response_spec, ResponseReply, ResponseSpec};
+//use ort_core::{Spec, Reply};
+use crate::proto::{ort_server, response_spec as spec, ResponseReply, ResponseSpec};
 use rand::{rngs::SmallRng, RngCore};
 use std::convert::TryInto;
 use tokio_02::time;
 
 #[derive(Clone)]
-pub(crate) struct Server {
+pub struct Server {
     rng: SmallRng,
 }
 
 impl Server {
-    pub fn new(rng: SmallRng) -> proto::ort_server::OrtServer<Self> {
-        proto::ort_server::OrtServer::new(Self { rng })
+    pub fn new(rng: SmallRng) -> ort_server::OrtServer<Self> {
+        ort_server::OrtServer::new(Self { rng })
     }
 }
 
 #[tonic::async_trait]
-impl Ort for Server {
+impl ort_server::Ort for Server {
     async fn get(
         &self,
-        req: tonic::Request<proto::ResponseSpec>,
-    ) -> Result<tonic::Response<proto::ResponseReply>, tonic::Status> {
-        use proto::response_spec as spec;
-
-        let proto::ResponseSpec {
+        req: tonic::Request<ResponseSpec>,
+    ) -> Result<tonic::Response<ResponseReply>, tonic::Status> {
+        let ResponseSpec {
             latency,
             result,
             data: _,
@@ -38,11 +33,11 @@ impl Ort for Server {
         time::delay_for(l).await;
 
         match result {
-            None => Ok(tonic::Response::new(proto::ResponseReply::default())),
+            None => Ok(tonic::Response::new(ResponseReply::default())),
             Some(spec::Result::Success(spec::Success { size })) => {
                 let mut data = Vec::with_capacity(size.try_into().unwrap_or(0));
                 self.rng.clone().fill_bytes(&mut data);
-                Ok(tonic::Response::new(proto::ResponseReply { data }))
+                Ok(tonic::Response::new(ResponseReply { data }))
             }
             Some(spec::Result::Error(spec::Error { code, message })) => {
                 let code = match code {

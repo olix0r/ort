@@ -1,0 +1,15 @@
+[package]
+name = "ort-core"
+version = "0.1.0"
+authors = ["Oliver Gould <ver@buoyant.io>"]
+edition = "2018"
+publish = false
+
+[dependencies]
+bytes = "0.5"
+async-trait = "0.1"
+#rand = { version = "0.7", features = ["small_rng"] }
+#tokio = { version = "0.3", features = ["macros", "rt", "signal", "sync", "time"] }
+#tokio-compat-02 = "0.1"
+#tracing = "0.1"
+#tracing-futures = "0.2"
