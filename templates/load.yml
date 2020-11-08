@@ -13,7 +13,7 @@ metadata:
     app: ort
     ort.olix0r.net/role: load
     ort.olix0r.net/protocol: {{ $protoName }}
-  name: load-{{ $proto }}
+  name: load-{{ $protoName }}
   namespace: {{ $ns }}
 spec:
   replicas: {{ int $load.replicas }}
