@@ -72,7 +72,7 @@ pub struct Opt {
     targets: Vec<Target>,
 }
 
-type Target = Flavor<::http::Uri, ::http::Uri>;
+type Target = Flavor<hyper::Uri, hyper::Uri>;
 
 #[derive(Clone, Debug)]
 pub enum Flavor<H, G> {
@@ -153,9 +153,9 @@ impl Opt {
 #[async_trait::async_trait]
 impl<H, G> MakeOrt<Target> for (H, G)
 where
-    H: MakeOrt<::http::Uri> + Send + Sync + 'static,
+    H: MakeOrt<hyper::Uri> + Send + Sync + 'static,
     H::Ort: Send + Sync + 'static,
-    G: MakeOrt<::http::Uri> + Send + Sync + 'static,
+    G: MakeOrt<hyper::Uri> + Send + Sync + 'static,
     G::Ort: Send + Sync + 'static,
 {
     type Ort = Flavor<H::Ort, G::Ort>;
@@ -194,7 +194,7 @@ impl FromStr for Target {
     type Err = Box<dyn std::error::Error + 'static>;
 
     fn from_str(s: &str) -> Result<Target, Self::Err> {
-        let uri = ::http::Uri::from_str(s)?;
+        let uri = hyper::Uri::from_str(s)?;
         match uri.scheme_str() {
             Some("grpc") | None => Ok(Target::Grpc(uri)),
             Some("http") => Ok(Target::Http(uri)),
@@ -203,8 +203,8 @@ impl FromStr for Target {
     }
 }
 
-impl AsRef<::http::Uri> for Target {
-    fn as_ref(&self) -> &::http::Uri {
+impl AsRef<hyper::Uri> for Target {
+    fn as_ref(&self) -> &hyper::Uri {
         match self {
             Flavor::Http(h) => &h,
             Flavor::Grpc(g) => &g,

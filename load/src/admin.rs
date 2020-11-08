@@ -21,7 +21,7 @@ impl Admin {
                 let admin = admin.clone();
                 async move {
                     Ok::<_, Infallible>(hyper::service::service_fn(
-                        move |req: http::Request<hyper::Body>| {
+                        move |req: hyper::Request<hyper::Body>| {
                             let admin = admin.clone();
                             async move { admin.handle(req).await }
                         },
@@ -33,27 +33,27 @@ impl Admin {
 
     async fn handle(
         &self,
-        req: http::Request<hyper::Body>,
-    ) -> Result<http::Response<hyper::Body>, Infallible> {
+        req: hyper::Request<hyper::Body>,
+    ) -> Result<hyper::Response<hyper::Body>, Infallible> {
         match req.uri().path() {
             "/live" | "/ready" => {
-                if let http::Method::GET | http::Method::HEAD = *req.method() {
-                    return Ok(http::Response::builder()
-                        .status(http::StatusCode::NO_CONTENT)
+                if let hyper::Method::GET | hyper::Method::HEAD = *req.method() {
+                    return Ok(hyper::Response::builder()
+                        .status(hyper::StatusCode::NO_CONTENT)
                         .body(hyper::Body::default())
                         .unwrap());
                 }
             }
 
             "/report.json" => {
-                if let http::Method::GET = *req.method() {
+                if let hyper::Method::GET = *req.method() {
                     let report = {
                         let h = self.histogram.read().await;
                         Report::from(&*h)
                     };
-                    return Ok(http::Response::builder()
-                        .status(http::StatusCode::OK)
-                        .header(http::header::CONTENT_TYPE, "application/json")
+                    return Ok(hyper::Response::builder()
+                        .status(hyper::StatusCode::OK)
+                        .header(hyper::header::CONTENT_TYPE, "application/json")
                         .body(json::to_vec_pretty(&report).unwrap().into())
                         .unwrap());
                 }
@@ -62,8 +62,8 @@ impl Admin {
             _ => {}
         }
 
-        Ok(http::Response::builder()
-            .status(http::StatusCode::NOT_FOUND)
+        Ok(hyper::Response::builder()
+            .status(hyper::StatusCode::NOT_FOUND)
             .body(hyper::Body::default())
             .unwrap())
     }

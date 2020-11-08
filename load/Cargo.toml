@@ -6,13 +6,12 @@ edition = "2018"
 publish = false
 
 [features]
-# Generate code that is formatted.
-rustfmt = ["ort-grpc/rustfmt"]
+grpc-fmt = ["ort-grpc/rustfmt"]
 
 [dependencies]
 async-trait = "0.1"
 hdrhistogram = "7.1"
-http = "0.2"
+#http = "0.2"
 hyper = "0.13.3"
 indexmap = "1.0"
 ort-core = { path = "../core" }

@@ -6,7 +6,7 @@ edition = "2018"
 publish = false
 
 [features]
-rustfmt = ["ort-grpc/rustfmt"]
+grpc-fmt = ["ort-grpc/rustfmt"]
 
 [dependencies]
 async-trait = "0.1"

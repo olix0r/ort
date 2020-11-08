@@ -698,7 +698,6 @@ version = "0.1.8"
 dependencies = [
  "async-trait",
  "hdrhistogram",
- "http",
  "hyper",
  "indexmap",
  "ort-core",
