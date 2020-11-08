@@ -116,7 +116,9 @@ impl Cmd {
 
         let limit = (
             Arc::new(Semaphore::new(
-                concurrency_limit.filter(|c| *c > 0).unwrap_or(clients_per_target),
+                concurrency_limit
+                    .filter(|c| *c > 0)
+                    .unwrap_or(clients_per_target),
             )),
             RateLimit::spawn(request_limit, request_limit_window),
         );

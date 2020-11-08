@@ -71,10 +71,7 @@ impl Decoder for ReplyCodec {
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Reply>, Error> {
         match self.0.decode(src)? {
             None => Ok(None),
-            Some(buf) => {
-                let reply = json::from_slice(buf.freeze().as_ref())?;
-                Ok(Some(reply))
-            }
+            Some(buf) => Ok(Some(Reply { data: buf.freeze() })),
         }
     }
 }
@@ -82,9 +79,8 @@ impl Decoder for ReplyCodec {
 impl Encoder<Reply> for ReplyCodec {
     type Error = Error;
 
-    fn encode(&mut self, reply: Reply, dst: &mut BytesMut) -> Result<(), Error> {
-        let buf = json::to_vec(&reply)?;
-        self.0.encode(buf.into(), dst)?;
+    fn encode(&mut self, Reply { data }: Reply, dst: &mut BytesMut) -> Result<(), Error> {
+        self.0.encode(data, dst)?;
         Ok(())
     }
 }
