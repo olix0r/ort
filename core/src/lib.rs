@@ -18,6 +18,7 @@ pub trait Ort: Clone + Send + 'static {
 pub type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 #[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "deser", derive(serde::Serialize, serde::Deserialize))]
 pub struct Spec {
     pub latency: Duration,
     pub response_size: usize,
@@ -25,6 +26,7 @@ pub struct Spec {
 }
 
 #[derive(Clone, Debug, Default)]
+#[cfg_attr(feature = "deser", derive(serde::Serialize, serde::Deserialize))]
 pub struct Reply {
     pub data: Bytes,
 }

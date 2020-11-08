@@ -19,10 +19,10 @@ spec:
     ort.olix0r.net/role: server
     ort.olix0r.net/instance: {{quote $i}}
   ports:
-  {{- range $name, $port := $protocols }}
-  {{-   if $port }}
-    - port: {{ $port }}
-      targetPort: {{ $port }}
+  {{- range $name, $proto := $protocols }}
+  {{-   if $proto }}
+    - port: {{ $proto.port }}
+      targetPort: {{ $proto.port }}
       name: {{ $name }}
   {{-   end }}
   {{- end }}
@@ -68,10 +68,10 @@ spec:
           {{- end }}
             - server
           ports:
-          {{- range $name, $port := $protocols }}
-          {{-   if $port }}
+          {{- range $name, $config := $protocols }}
+          {{-   if $config }}
             - protocol: TCP
-              containerPort: {{ $port }}
+              containerPort: {{ $config.port }}
               name: {{ $name }}
           {{-   end }}
           {{- end }}

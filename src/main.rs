@@ -17,8 +17,8 @@ struct Ort {
 
 #[derive(StructOpt)]
 enum Cmd {
-    Load(load::Opt),
-    Server(server::Server),
+    Load(load::Cmd),
+    Server(server::Cmd),
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     };
 
     match cmd {
-        Cmd::Load(l) => rt.block_on(l.run(threads)),
+        Cmd::Load(l) => rt.block_on(l.run()),
         Cmd::Server(s) => rt.block_on(s.run()),
     }
 }

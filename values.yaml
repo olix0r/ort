@@ -1,10 +1,18 @@
-image: ghcr.io/olix0r/ort:v0.1.8-1
+image: ghcr.io/olix0r/ort:v0.1.9
 
 # # If the protocol ports are unset (or set to 0), then the load deployment won't be created and
 # the service won't expose the port.
 protocols:
-  grpc: 8070
-  http: 8080
+  grpc:
+    port: 8070
+    loadFlags: {}
+  http:
+    port: 8080
+    loadFlags: {}
+  tcp:
+    port: 8090
+    loadFlags:
+      clientsPerTarget: 3
 
 load:
   #log: info
