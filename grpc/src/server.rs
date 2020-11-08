@@ -1,22 +1,21 @@
 //use ort_core::{Spec, Reply};
 use crate::proto::{ort_server, response_spec as spec, ResponseReply, ResponseSpec};
-use rand::{rngs::SmallRng, RngCore};
+use ort_core::{Ort, Reply, Spec};
 use std::convert::TryInto;
-use tokio_02::time;
 
 #[derive(Clone)]
-pub struct Server {
-    rng: SmallRng,
+pub struct Server<O> {
+    inner: O,
 }
 
-impl Server {
-    pub fn new(rng: SmallRng) -> ort_server::OrtServer<Self> {
-        ort_server::OrtServer::new(Self { rng })
+impl<O: Ort + Sync> Server<O> {
+    pub fn new(inner: O) -> ort_server::OrtServer<Self> {
+        ort_server::OrtServer::new(Self { inner })
     }
 }
 
 #[tonic::async_trait]
-impl ort_server::Ort for Server {
+impl<O: Ort + Sync> ort_server::Ort for Server<O> {
     async fn get(
         &self,
         req: tonic::Request<ResponseSpec>,
@@ -24,21 +23,14 @@ impl ort_server::Ort for Server {
         let ResponseSpec {
             latency,
             result,
-            data: _,
+            data,
         } = req.into_inner();
 
-        let l = latency
-            .and_then(|l| l.try_into().ok())
-            .unwrap_or(time::Duration::from_secs(0));
-        time::delay_for(l).await;
+        let latency = latency.and_then(|l| l.try_into().ok()).unwrap_or_default();
 
-        match result {
-            None => Ok(tonic::Response::new(ResponseReply::default())),
-            Some(spec::Result::Success(spec::Success { size })) => {
-                let mut data = Vec::with_capacity(size.try_into().unwrap_or(0));
-                self.rng.clone().fill_bytes(&mut data);
-                Ok(tonic::Response::new(ResponseReply { data }))
-            }
+        let response_size = match result {
+            None => 0,
+            Some(spec::Result::Success(spec::Success { size })) => size as usize,
             Some(spec::Result::Error(spec::Error { code, message })) => {
                 let code = match code {
                     1 => tonic::Code::Cancelled,
@@ -59,8 +51,24 @@ impl ort_server::Ort for Server {
                     16 => tonic::Code::Unauthenticated,
                     _ => tonic::Code::InvalidArgument,
                 };
-                Err(tonic::Status::new(code, message))
+                return Err(tonic::Status::new(code, message).into());
             }
-        }
+        };
+
+        let spec = Spec {
+            latency,
+            response_size,
+            data: data.into(),
+        };
+        let mut inner = self.inner.clone();
+        inner
+            .ort(spec)
+            .await
+            .map(|Reply { data }| {
+                tonic::Response::new(ResponseReply {
+                    data: data.into_iter().collect(),
+                })
+            })
+            .map_err(|e| tonic::Status::internal(e.to_string()))
     }
 }
