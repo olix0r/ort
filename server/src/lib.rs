@@ -5,6 +5,7 @@ mod replier;
 use self::replier::Replier;
 use ort_grpc::server as grpc;
 use ort_http::server as http;
+use ort_tcp::server as tcp;
 use rand::{rngs::SmallRng, SeedableRng};
 use std::net::SocketAddr;
 use structopt::StructOpt;
@@ -21,8 +22,9 @@ pub struct Server {
 
     #[structopt(short, long, default_value = "0.0.0.0:8080")]
     http_addr: SocketAddr,
-    // #[structopt(short, long, default_value = "0.0.0.0:8090")]
-    // tcp_addr: SocketAddr,
+
+    #[structopt(short, long, default_value = "0.0.0.0:8090")]
+    tcp_addr: SocketAddr,
 }
 
 impl Server {
@@ -31,7 +33,8 @@ impl Server {
         let replier = Replier::new(rng);
 
         tokio::spawn(grpc::Server::new(replier.clone()).serve(self.grpc_addr));
-        tokio::spawn(http::Server::new(replier).serve(self.http_addr));
+        tokio::spawn(http::Server::new(replier.clone()).serve(self.http_addr));
+        tokio::spawn(tcp::Server::new(replier).serve(self.tcp_addr));
 
         let mut term = signal(SignalKind::terminate())?;
         tokio::select! {

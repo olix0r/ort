@@ -14,6 +14,7 @@ bytes = "0.5"
 ort-core = { path = "../core" }
 ort-grpc = { path = "../grpc" }
 ort-http = { path = "../http" }
+ort-tcp = { path = "../tcp" }
 rand = { version = "0.7", features = ["small_rng"] }
 structopt = "0.3"
 tokio = { version = "0.2", features = ["macros", "signal", "time"] }
