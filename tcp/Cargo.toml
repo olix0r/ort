@@ -6,13 +6,13 @@ edition = "2018"
 publish = false
 
 [dependencies]
+async-trait = "0.1"
 bytes = "0.5"
 futures = "0.3"
-hyper = "0.13.3"
 ort-core = { path = "../core", features = ["deser"] }
 rand = { version = "0.7", features = ["small_rng"] }
 serde = "1.0"
 serde_json = "1.0"
-tokio = { version = "0.2", features = ["io-util", "macros", "net", "signal", "time"] }
+tokio = { version = "0.2", features = ["io-util", "macros", "net", "signal", "sync", "time"] }
 tokio-util = { version = "0.3.1", features = ["codec"] }
 tracing = "0.1"

@@ -768,6 +768,7 @@ dependencies = [
  "ort-core",
  "ort-grpc",
  "ort-http",
+ "ort-tcp",
  "rand",
  "regex",
  "serde",
@@ -799,9 +800,9 @@ dependencies = [
 name = "ort-tcp"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bytes",
  "futures",
- "hyper",
  "ort-core",
  "rand",
  "serde",

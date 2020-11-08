@@ -1,5 +1,6 @@
 #![deny(warnings, rust_2018_idioms)]
 
+pub mod client;
 pub mod server;
 
 use bytes::BytesMut;
@@ -7,7 +8,8 @@ use ort_core::{Error, Reply, Spec};
 use serde_json as json;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
-static PREFIX: &str = "ort.linkerd.io/load\r\n\r\n";
+const PREFIX_LEN: usize = 23;
+static PREFIX: &str = "ort.olix0r.net/load\r\n\r\n";
 
 struct SpecCodec(LengthDelimitedCodec);
 

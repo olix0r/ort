@@ -1,4 +1,4 @@
-use crate::{ReplyCodec, SpecCodec, PREFIX};
+use crate::{ReplyCodec, SpecCodec, PREFIX, PREFIX_LEN};
 use futures::prelude::*;
 use ort_core::{Error, Ort};
 use std::net::SocketAddr;
@@ -22,8 +22,9 @@ impl<O: Ort> Server<O> {
             tokio::spawn(async move {
                 let (mut sock_rx, sock_tx) = stream.split();
 
-                let mut prefix = Vec::<u8>::with_capacity(PREFIX.as_bytes().len());
-                let sz = match sock_rx.read_exact(prefix.as_mut()).await {
+                let mut prefix = [0u8; PREFIX_LEN];
+                debug_assert_eq!(prefix.len(), PREFIX.len());
+                let _sz = match sock_rx.read_exact(&mut prefix).await {
                     Ok(sz) => sz,
                     Err(error) => {
                         info!(%error, "Could not read prefix");
@@ -31,8 +32,8 @@ impl<O: Ort> Server<O> {
                     }
                 };
 
-                if sz != PREFIX.as_bytes().len() || prefix.as_slice() != PREFIX.as_bytes() {
-                    info!("Client isn't speaking our language");
+                if prefix != PREFIX.as_bytes() {
+                    info!(?prefix, expected = ?PREFIX.as_bytes(), "Client isn't speaking our language");
                     return;
                 }
 

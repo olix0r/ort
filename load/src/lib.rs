@@ -17,6 +17,7 @@ use self::{
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
 use ort_grpc::client::MakeGrpc;
 use ort_http::client::MakeHttp;
+use ort_tcp::client::MakeTcp;
 use rand::{rngs::SmallRng, SeedableRng};
 use std::{net::SocketAddr, str::FromStr, sync::Arc};
 use structopt::StructOpt;
@@ -72,12 +73,13 @@ pub struct Opt {
     targets: Vec<Target>,
 }
 
-type Target = Flavor<hyper::Uri, hyper::Uri>;
+type Target = Flavor<hyper::Uri, hyper::Uri, String>;
 
 #[derive(Clone, Debug)]
-pub enum Flavor<H, G> {
+pub enum Flavor<H, G, T> {
     Http(H),
     Grpc(G),
+    Tcp(T),
 }
 
 // === impl Load ===C
@@ -121,7 +123,8 @@ impl Opt {
         let connect = {
             let http = MakeHttp::new(connect_timeout, http_close);
             let grpc = MakeGrpc::new(connect_timeout, Duration::from_secs(1));
-            let timeout = MakeRequestTimeout::new((http, grpc), request_timeout);
+            let tcp = MakeTcp::new();
+            let timeout = MakeRequestTimeout::new((http, grpc, tcp), request_timeout);
             MakeMetrics::new(timeout, histogram)
         };
 
@@ -151,14 +154,16 @@ impl Opt {
 // === impl Flavor ===
 
 #[async_trait::async_trait]
-impl<H, G> MakeOrt<Target> for (H, G)
+impl<H, G, T> MakeOrt<Target> for (H, G, T)
 where
     H: MakeOrt<hyper::Uri> + Send + Sync + 'static,
     H::Ort: Send + Sync + 'static,
     G: MakeOrt<hyper::Uri> + Send + Sync + 'static,
     G::Ort: Send + Sync + 'static,
+    T: MakeOrt<String> + Send + Sync + 'static,
+    T::Ort: Send + Sync + 'static,
 {
-    type Ort = Flavor<H::Ort, G::Ort>;
+    type Ort = Flavor<H::Ort, G::Ort, T::Ort>;
 
     async fn make_ort(&mut self, target: Target) -> Result<Self::Ort, Error> {
         match target {
@@ -170,20 +175,26 @@ where
                 let c = self.1.make_ort(t).await?;
                 Ok(Flavor::Grpc(c))
             }
+            Target::Tcp(t) => {
+                let c = self.2.make_ort(t).await?;
+                Ok(Flavor::Tcp(c))
+            }
         }
     }
 }
 
 #[async_trait::async_trait]
-impl<H, G> Ort for Flavor<H, G>
+impl<H, G, T> Ort for Flavor<H, G, T>
 where
     H: Ort + Send + Sync + 'static,
     G: Ort + Send + Sync + 'static,
+    T: Ort + Send + Sync + 'static,
 {
     async fn ort(&mut self, spec: Spec) -> Result<Reply, Error> {
         match self {
             Flavor::Http(h) => h.ort(spec).await,
             Flavor::Grpc(g) => g.ort(spec).await,
+            Flavor::Tcp(t) => t.ort(spec).await,
         }
     }
 }
@@ -198,36 +209,38 @@ impl FromStr for Target {
         match uri.scheme_str() {
             Some("grpc") | None => Ok(Target::Grpc(uri)),
             Some("http") => Ok(Target::Http(uri)),
-            Some(scheme) => Err(UnsupportedScheme(scheme.to_string()).into()),
-        }
-    }
-}
-
-impl AsRef<hyper::Uri> for Target {
-    fn as_ref(&self) -> &hyper::Uri {
-        match self {
-            Flavor::Http(h) => &h,
-            Flavor::Grpc(g) => &g,
+            Some("tcp") => {
+                let t = match uri.authority() {
+                    Some(a) => format!("{}:{}", a.host(), a.port_u16().unwrap_or(8090)),
+                    None => return Err(InvalidTarget(uri).into()),
+                };
+                Ok(Target::Tcp(t))
+            }
+            Some(_) => Err(InvalidTarget(uri).into()),
         }
     }
 }
 
 impl std::fmt::Display for Target {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.as_ref().fmt(f)
+        match self {
+            Flavor::Http(h) => h.fmt(f),
+            Flavor::Grpc(g) => g.fmt(f),
+            Flavor::Tcp(t) => t.fmt(f),
+        }
     }
 }
 
 #[derive(Debug)]
-struct UnsupportedScheme(String);
+struct InvalidTarget(hyper::Uri);
 
-impl std::fmt::Display for UnsupportedScheme {
+impl std::fmt::Display for InvalidTarget {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Unsupported scheme: {}", self.0)
     }
 }
 
-impl std::error::Error for UnsupportedScheme {}
+impl std::error::Error for InvalidTarget {}
 
 // === parse_duration ===
 
