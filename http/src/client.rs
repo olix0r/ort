@@ -1,7 +1,6 @@
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
 use std::convert::TryFrom;
 use tokio::time::Duration;
-use tokio_compat_02::FutureExt;
 
 #[derive(Clone)]
 pub struct MakeHttp {
@@ -85,7 +84,6 @@ impl Ort for Http {
                     .body(hyper::Body::default())
                     .unwrap(),
             )
-            .compat()
             .await?;
 
         if !rsp.status().is_success() {

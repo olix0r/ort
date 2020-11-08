@@ -1,20 +1,19 @@
 use crate::proto::{ort_client, response_spec as spec, ResponseSpec};
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
-use tokio::time::{sleep, timeout, Duration};
-use tokio_compat_02::FutureExt;
+use tokio::time;
 use tracing::warn;
 
 #[derive(Clone)]
 pub struct MakeGrpc {
-    connect_timeout: Duration,
-    backoff: Duration,
+    connect_timeout: time::Duration,
+    backoff: time::Duration,
 }
 
 #[derive(Clone)]
 pub struct Grpc(ort_client::OrtClient<tonic::transport::Channel>);
 
 impl MakeGrpc {
-    pub fn new(connect_timeout: Duration, backoff: Duration) -> Self {
+    pub fn new(connect_timeout: time::Duration, backoff: time::Duration) -> Self {
         Self {
             connect_timeout,
             backoff,
@@ -28,12 +27,12 @@ impl MakeOrt<http::Uri> for MakeGrpc {
 
     async fn make_ort(&mut self, target: http::Uri) -> Result<Grpc, Error> {
         loop {
-            let connect = ort_client::OrtClient::connect(target.clone()).compat();
-            match timeout(self.connect_timeout, connect).await {
+            let connect = ort_client::OrtClient::connect(target.clone());
+            match time::timeout(self.connect_timeout, connect).await {
                 Ok(Ok(client)) => return Ok(Grpc(client)),
                 Ok(Err(error)) => {
                     warn!(%error, "Failed to connect");
-                    sleep(self.backoff).await;
+                    time::delay_for(self.backoff).await;
                 }
                 Err(_) => {
                     warn!("Connection timed out");
@@ -61,7 +60,7 @@ impl Ort for Grpc {
             data: data.into_iter().collect(),
         };
 
-        let rsp = self.0.get(req).compat().await?.into_inner();
+        let rsp = self.0.get(req).await?.into_inner();
         Ok(Reply {
             data: rsp.data.into(),
         })

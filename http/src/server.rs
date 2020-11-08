@@ -1,6 +1,6 @@
 use ort_core::{Error, Ort, Reply, Spec};
 use std::{convert::Infallible, net::SocketAddr};
-use tokio_02::time;
+use tokio::time;
 
 #[derive(Clone, Debug)]
 pub struct Server<O> {
