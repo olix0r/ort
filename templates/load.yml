@@ -3,8 +3,8 @@
 {{- $services := int .Values.server.services | default 1}}
 {{- $load := .Values.load }}
 {{- $linkerd := deepCopy .Values.linkerd | merge $load.linkerd }}
-{{- range $proto, $port := .Values.protocols }}
-{{-   if $port }}
+{{- range $protoName, $proto := .Values.protocols }}
+{{-   if $proto}}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -12,7 +12,7 @@ metadata:
   labels:
     app: ort
     ort.olix0r.net/role: load
-    ort.olix0r.net/protocol: {{ $proto }}
+    ort.olix0r.net/protocol: {{ $protoName }}
   name: load-{{ $proto }}
   namespace: {{ $ns }}
 spec:
@@ -21,13 +21,13 @@ spec:
     matchLabels:
       app: ort
       ort.olix0r.net/role: load
-      ort.olix0r.net/protocol: {{ $proto }}
+      ort.olix0r.net/protocol: {{ $protoName }}
   template:
     metadata:
       labels:
         app: ort
         ort.olix0r.net/role: load
-        ort.olix0r.net/protocol: {{ $proto }}
+        ort.olix0r.net/protocol: {{ $protoName }}
       annotations:
 {{ $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
@@ -46,11 +46,12 @@ spec:
             - --threads={{ $load.threads }}
           {{- end }}
             - load
-          {{- range $f, $v := $load.flags }}
+          {{- $flags := deepCopy $proto.loadFlags | merge $load.flags }}
+          {{- range $f, $v := $flags }}
             - --{{ kebabcase $f }}={{ $v }}
           {{- end }}
           {{- range $i, $e := until $services }}
-            - {{ printf "%s://server-%03d:%d" $proto $i (int $port) }}
+            - {{ printf "%s://server-%03d:%d" $protoName $i (int $proto.port) }}
           {{- end }}
 {{-   end }}
 {{- end }}

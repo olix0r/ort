@@ -68,10 +68,10 @@ spec:
           {{- end }}
             - server
           ports:
-          {{- range $name, $port := $protocols }}
-          {{-   if $port }}
+          {{- range $name, $config := $protocols }}
+          {{-   if $config }}
             - protocol: TCP
-              containerPort: {{ $port }}
+              containerPort: {{ $config.port }}
               name: {{ $name }}
           {{-   end }}
           {{- end }}
