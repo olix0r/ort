@@ -12,7 +12,6 @@ rustfmt = ["tonic-build/rustfmt"]
 [dependencies]
 async-trait = "0.1"
 http = "0.2"
-hyper = "0.13.3"
 indexmap = "1.0"
 ort-core = { path = "../core" }
 prost = "0.6"

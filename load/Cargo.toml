@@ -11,14 +11,11 @@ grpc-fmt = ["ort-grpc/rustfmt"]
 [dependencies]
 async-trait = "0.1"
 hdrhistogram = "7.1"
-#http = "0.2"
 hyper = "0.13.3"
 indexmap = "1.0"
 ort-core = { path = "../core" }
 ort-grpc = { path = "../grpc" }
 ort-http = { path = "../http" }
-prost = "0.6"
-prost-types = "0.6"
 rand = { version = "0.7", features = ["small_rng"] }
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }

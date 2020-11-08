@@ -666,7 +666,6 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "http",
- "hyper",
  "indexmap",
  "ort-core",
  "prost",
@@ -703,8 +702,6 @@ dependencies = [
  "ort-core",
  "ort-grpc",
  "ort-http",
- "prost",
- "prost-types",
  "rand",
  "regex",
  "serde",
