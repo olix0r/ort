@@ -28,9 +28,9 @@ impl std::str::FromStr for Latency {
     }
 }
 
-impl rand::distributions::Distribution<::prost_types::Duration> for Distribution {
-    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> ::prost_types::Duration {
+impl rand::distributions::Distribution<Duration> for Distribution {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Duration {
         let Latency { millis } = self.get(rng.gen());
-        Duration::from_millis(millis).into()
+        Duration::from_millis(millis)
     }
 }

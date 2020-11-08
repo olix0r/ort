@@ -1,5 +1,5 @@
-use crate::{proto, Client, MakeClient};
 use hdrhistogram as hdr;
+use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
 use std::{sync::Arc, time::Instant};
 use tokio::sync::RwLock;
 use tracing::trace;
@@ -23,29 +23,26 @@ impl<M> MakeMetrics<M> {
 }
 
 #[async_trait::async_trait]
-impl<M, T> MakeClient<T> for MakeMetrics<M>
+impl<M, T> MakeOrt<T> for MakeMetrics<M>
 where
     T: Send + 'static,
-    M: MakeClient<T> + Send + 'static,
-    M::Client: Send + 'static,
+    M: MakeOrt<T> + Send + 'static,
+    M::Ort: Send + 'static,
 {
-    type Client = Metrics<M::Client>;
+    type Ort = Metrics<M::Ort>;
 
-    async fn make_client(&mut self, t: T) -> Self::Client {
-        let inner = self.inner.make_client(t).await;
+    async fn make_ort(&mut self, t: T) -> Result<Self::Ort, Error> {
+        let inner = self.inner.make_ort(t).await?;
         let histogram = self.histogram.clone();
-        Metrics { inner, histogram }
+        Ok(Metrics { inner, histogram })
     }
 }
 
 #[async_trait::async_trait]
-impl<C: Client + Send + 'static> Client for Metrics<C> {
-    async fn get(
-        &mut self,
-        spec: proto::ResponseSpec,
-    ) -> Result<proto::ResponseReply, tonic::Status> {
+impl<C: Ort + Send + 'static> Ort for Metrics<C> {
+    async fn ort(&mut self, spec: Spec) -> Result<Reply, Error> {
         let t0 = Instant::now();
-        let res = self.inner.get(spec).await;
+        let res = self.inner.ort(spec).await;
         let elapsed = Instant::now() - t0;
         let micros = elapsed.as_micros();
         trace!(%micros);

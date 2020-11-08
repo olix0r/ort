@@ -2,8 +2,6 @@
 
 mod admin;
 mod distribution;
-mod grpc;
-mod http;
 mod latency;
 mod limit;
 mod metrics;
@@ -13,9 +11,12 @@ mod runner;
 mod timeout;
 
 use self::{
-    admin::Admin, distribution::Distribution, grpc::MakeGrpc, http::MakeHttp, metrics::MakeMetrics,
-    rate_limit::RateLimit, runner::Runner, timeout::MakeRequestTimeout,
+    admin::Admin, distribution::Distribution, metrics::MakeMetrics, rate_limit::RateLimit,
+    runner::Runner, timeout::MakeRequestTimeout,
 };
+use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
+use ort_grpc::client::MakeGrpc;
+use ort_http::client::MakeHttp;
 use rand::{rngs::SmallRng, SeedableRng};
 use std::{net::SocketAddr, str::FromStr, sync::Arc};
 use structopt::StructOpt;
@@ -27,28 +28,12 @@ use tokio::{
     sync::{RwLock, Semaphore},
     time::Duration,
 };
-use tokio_compat_02::FutureExt;
 use tracing::debug_span;
 use tracing_futures::Instrument;
 
-#[async_trait::async_trait]
-pub trait MakeClient<T> {
-    type Client: Client;
-
-    async fn make_client(&mut self, target: T) -> Self::Client;
-}
-
-#[async_trait::async_trait]
-pub trait Client: Clone + Send + 'static {
-    async fn get(
-        &mut self,
-        spec: proto::ResponseSpec,
-    ) -> Result<proto::ResponseReply, tonic::Status>;
-}
-
 #[derive(StructOpt)]
-#[structopt(about = "Load generator")]
-pub struct Load {
+#[structopt(name = "load", about = "Load generator")]
+pub struct Opt {
     #[structopt(long, parse(try_from_str), default_value = "0.0.0.0:8000")]
     admin_addr: SocketAddr,
 
@@ -97,7 +82,7 @@ pub enum Flavor<H, G> {
 
 // === impl Load ===C
 
-impl Load {
+impl Opt {
     pub async fn run(self, threads: usize) -> Result<(), Box<dyn std::error::Error + 'static>> {
         let Self {
             admin_addr,
@@ -118,15 +103,16 @@ impl Load {
         let histogram = Arc::new(RwLock::new(hdrhistogram::Histogram::new(3).unwrap()));
         let admin = Admin::new(histogram.clone());
 
-        let concurrency_limit = Arc::new(Semaphore::new(
-            concurrency_limit.filter(|c| *c > 0).unwrap_or(threads * 2),
-        ));
-
-        let rate_limit = RateLimit::spawn(request_limit, request_limit_window);
+        let limit = (
+            Arc::new(Semaphore::new(
+                concurrency_limit.filter(|c| *c > 0).unwrap_or(threads * 2),
+            )),
+            RateLimit::spawn(request_limit, request_limit_window),
+        );
         let runner = Runner::new(
             requests_per_target.unwrap_or(0),
             total_requests.unwrap_or(0),
-            (concurrency_limit, rate_limit),
+            limit,
             Arc::new(response_latency),
             Arc::new(response_size),
             SmallRng::from_entropy(),
@@ -146,7 +132,6 @@ impl Load {
             async move {
                 admin
                     .serve(admin_addr)
-                    .compat()
                     .await
                     .expect("Admin server must not fail")
             }
@@ -166,42 +151,39 @@ impl Load {
 // === impl Flavor ===
 
 #[async_trait::async_trait]
-impl<H, G> MakeClient<Target> for (H, G)
+impl<H, G> MakeOrt<Target> for (H, G)
 where
-    H: MakeClient<::http::Uri> + Send + Sync + 'static,
-    H::Client: Send + Sync + 'static,
-    G: MakeClient<::http::Uri> + Send + Sync + 'static,
-    G::Client: Send + Sync + 'static,
+    H: MakeOrt<::http::Uri> + Send + Sync + 'static,
+    H::Ort: Send + Sync + 'static,
+    G: MakeOrt<::http::Uri> + Send + Sync + 'static,
+    G::Ort: Send + Sync + 'static,
 {
-    type Client = Flavor<H::Client, G::Client>;
+    type Ort = Flavor<H::Ort, G::Ort>;
 
-    async fn make_client(&mut self, target: Target) -> Self::Client {
+    async fn make_ort(&mut self, target: Target) -> Result<Self::Ort, Error> {
         match target {
             Target::Http(t) => {
-                let c = self.0.make_client(t).await;
-                Flavor::Http(c)
+                let c = self.0.make_ort(t).await?;
+                Ok(Flavor::Http(c))
             }
             Target::Grpc(t) => {
-                let c = self.1.make_client(t).await;
-                Flavor::Grpc(c)
+                let c = self.1.make_ort(t).await?;
+                Ok(Flavor::Grpc(c))
             }
         }
     }
 }
 
 #[async_trait::async_trait]
-impl<H, G> Client for Flavor<H, G>
+impl<H, G> Ort for Flavor<H, G>
 where
-    H: Client + Send + Sync + 'static,
-    G: Client + Send + Sync + 'static,
+    H: Ort + Send + Sync + 'static,
+    G: Ort + Send + Sync + 'static,
 {
-    async fn get(
-        &mut self,
-        spec: proto::ResponseSpec,
-    ) -> Result<proto::ResponseReply, tonic::Status> {
+    async fn ort(&mut self, spec: Spec) -> Result<Reply, Error> {
         match self {
-            Flavor::Http(h) => h.get(spec).await,
-            Flavor::Grpc(g) => g.get(spec).await,
+            Flavor::Http(h) => h.ort(spec).await,
+            Flavor::Grpc(g) => g.ort(spec).await,
         }
     }
 }

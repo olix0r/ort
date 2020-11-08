@@ -1,6 +1,6 @@
 //use ort_core::{Spec, Reply};
 use crate::proto::{ort_server, response_spec as spec, ResponseReply, ResponseSpec};
-use ort_core::{Ort, Reply, Spec};
+use ort_core::{Error, Ort, Reply, Spec};
 use std::convert::TryInto;
 
 #[derive(Clone)]
@@ -9,8 +9,16 @@ pub struct Server<O> {
 }
 
 impl<O: Ort + Sync> Server<O> {
-    pub fn new(inner: O) -> ort_server::OrtServer<Self> {
-        ort_server::OrtServer::new(Self { inner })
+    pub fn new(inner: O) -> Self {
+        Self { inner }
+    }
+
+    pub async fn serve(self, addr: std::net::SocketAddr) -> Result<(), Error> {
+        tonic::transport::Server::builder()
+            .add_service(ort_server::OrtServer::new(self))
+            .serve(addr)
+            .await?;
+        Ok(())
     }
 }
 

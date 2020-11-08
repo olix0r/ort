@@ -1,7 +1,6 @@
 #![deny(warnings, rust_2018_idioms)]
 
 use bytes::Bytes;
-use rand::rngs::SmallRng;
 use std::time::Duration;
 
 #[async_trait::async_trait]
@@ -29,19 +28,3 @@ pub struct Spec {
 pub struct Reply {
     pub data: Bytes,
 }
-
-#[derive(Clone, Debug)]
-pub struct Replier { rng: SmallRng }
-
-impl Replier {
-    pub fn new(rng: SmallRng) -> Self {
-        Self { rng }
-    }
-}
-
-// #[async_trait::async_trait]
-// impl Ort for Replier {
-//     async fn ort(&mut self, spec: Spec) -> Result<Reply, Error> {
-
-//     }
-// }

@@ -1,8 +1,10 @@
 #![deny(warnings, rust_2018_idioms)]
 
-mod grpc;
-mod http;
+mod replier;
 
+use self::replier::Replier;
+use ort_grpc::server as grpc;
+use ort_http::server as http;
 use rand::{rngs::SmallRng, SeedableRng};
 use std::net::SocketAddr;
 use structopt::StructOpt;
@@ -10,7 +12,6 @@ use tokio::signal::{
     ctrl_c,
     unix::{signal, SignalKind},
 };
-use tokio_compat_02::FutureExt;
 
 #[derive(Clone, Debug, StructOpt)]
 #[structopt(about = "Load target")]
@@ -27,15 +28,10 @@ pub struct Server {
 impl Server {
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
         let rng = SmallRng::from_entropy();
+        let replier = Replier::new(rng);
 
-        tokio::spawn(
-            tonic::transport::Server::builder()
-                .add_service(grpc::Server::new(rng.clone()))
-                .serve(self.grpc_addr)
-                .compat(),
-        );
-
-        tokio::spawn(http::serve(self.http_addr, rng).compat());
+        tokio::spawn(grpc::Server::new(replier.clone()).serve(self.grpc_addr));
+        tokio::spawn(http::Server::new(replier).serve(self.http_addr));
 
         let mut term = signal(SignalKind::terminate())?;
         tokio::select! {
