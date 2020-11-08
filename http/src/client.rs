@@ -1,7 +1,6 @@
-use crate::proto::{self, response_spec as spec};
+use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
 use std::convert::TryFrom;
 use tokio::time::Duration;
-use tokio_compat_02::FutureExt;
 
 #[derive(Clone)]
 pub struct MakeHttp {
@@ -26,28 +25,32 @@ impl MakeHttp {
 }
 
 #[async_trait::async_trait]
-impl crate::MakeClient<http::Uri> for MakeHttp {
-    type Client = Http;
+impl MakeOrt<http::Uri> for MakeHttp {
+    type Ort = Http;
 
-    async fn make_client(&mut self, target: http::Uri) -> Http {
+    async fn make_ort(&mut self, target: http::Uri) -> Result<Http, Error> {
         let mut connect = hyper::client::HttpConnector::new();
         connect.set_connect_timeout(Some(self.connect_timeout));
         connect.set_nodelay(true);
         connect.set_reuse_address(true);
-        Http {
+        Ok(Http {
             target,
             client: hyper::Client::builder().build(connect),
             close: self.close,
-        }
+        })
     }
 }
 
 #[async_trait::async_trait]
-impl crate::Client for Http {
-    async fn get(
+impl Ort for Http {
+    async fn ort(
         &mut self,
-        spec: proto::ResponseSpec,
-    ) -> Result<proto::ResponseReply, tonic::Status> {
+        Spec {
+            latency,
+            response_size,
+            data: _,
+        }: Spec,
+    ) -> Result<Reply, Error> {
         let mut uri = http::Uri::builder();
         if let Some(s) = self.target.scheme() {
             uri = uri.scheme(s.clone());
@@ -58,21 +61,12 @@ impl crate::Client for Http {
         }
 
         uri = {
-            let latency_ms = spec
-                .latency
-                .and_then(|l| Duration::try_from(l).ok())
-                .unwrap_or_default()
-                .as_millis() as i64;
+            let latency_ms = Duration::try_from(latency).unwrap_or_default().as_millis() as i64;
 
-            let size = match spec.result {
-                Some(spec::Result::Success(spec::Success { size })) => size,
-                _ => 0,
-            };
-
-            tracing::trace!(latency_ms, size);
+            tracing::trace!(latency_ms, response_size);
             uri.path_and_query(
                 http::uri::PathAndQuery::try_from(
-                    format!("/?latency_ms={}&size={}", latency_ms, size).as_str(),
+                    format!("/?latency_ms={}&size={}", latency_ms, response_size).as_str(),
                 )
                 .expect("query must be valid"),
             )
@@ -90,20 +84,14 @@ impl crate::Client for Http {
                     .body(hyper::Body::default())
                     .unwrap(),
             )
-            .compat()
-            .await
-            .map_err(|e| tonic::Status::internal(e.to_string()))?;
+            .await?;
+
         if !rsp.status().is_success() {
-            return Err(tonic::Status::internal(format!(
-                "Unexpected response status: {}",
-                rsp.status()
-            )));
+            unimplemented!()
         }
-        let data = hyper::body::to_bytes(rsp.into_body())
-            .await
-            .map_err(|e| tonic::Status::internal(e.to_string()))?
-            .into_iter()
-            .collect::<Vec<u8>>();
-        Ok(proto::ResponseReply { data })
+
+        let data = hyper::body::to_bytes(rsp.into_body()).await?;
+
+        Ok(Reply { data })
     }
 }

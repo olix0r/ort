@@ -1,6 +1,9 @@
 [workspace]
 members = [
     ".",
+    "core",
+    "grpc",
+    "http",
     "load",
     "server",
 ]
@@ -13,17 +16,13 @@ edition = "2018"
 publish = false
 
 [features]
-default = ["load", "server"]
-load = ["ort-load"]
-server = ["ort-server"]
-rustfmt = ["ort-load/rustfmt", "ort-server/rustfmt"]
+grpc-fmt = ["ort-load/grpc-fmt", "ort-server/grpc-fmt"]
 
 [dependencies]
 num_cpus = "1"
-ort-load = { path = "./load", optional = true }
-ort-server = { path = "./server", optional = true }
+ort-load = { path = "./load" }
+ort-server = { path = "./server" }
 structopt = "0.3"
-tokio = { version = "0.3", features = ["macros", "rt-multi-thread", "time"] }
-tokio-compat-02 = "0.1"
+tokio = { version = "0.2", features = ["macros", "rt-threaded", "time"] }
 tracing-subscriber = "0.2"
 tracing = "0.1"

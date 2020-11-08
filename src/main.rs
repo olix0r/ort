@@ -1,12 +1,9 @@
 #![deny(warnings, rust_2018_idioms)]
 
-#[cfg(feature = "load")]
 use ort_load as load;
-#[cfg(feature = "server")]
 use ort_server as server;
 use structopt::StructOpt;
 use tokio::runtime as rt;
-use tracing::debug;
 
 #[derive(StructOpt)]
 #[structopt(about = "Load harness")]
@@ -20,10 +17,7 @@ struct Ort {
 
 #[derive(StructOpt)]
 enum Cmd {
-    #[cfg(feature = "load")]
-    Load(load::Load),
-
-    #[cfg(feature = "server")]
+    Load(load::Opt),
     Server(server::Server),
 }
 
@@ -33,29 +27,16 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let Ort { threads, cmd } = Ort::from_args();
 
     let threads = threads.unwrap_or_else(num_cpus::get);
-    let rt = {
-        let mut rt = rt::Builder::new_multi_thread();
+    let mut rt = {
+        let mut rt = rt::Builder::new();
+        rt.threaded_scheduler();
         rt.enable_all();
-        rt.thread_name_fn(|| {
-            use std::sync::atomic::{AtomicUsize, Ordering};
-            static ID: AtomicUsize = AtomicUsize::new(0);
-            let id = ID.fetch_add(1, Ordering::SeqCst);
-            format!("ort-{}", id)
-        });
-        debug!(%threads, "Initializing runtime");
-        rt.worker_threads(threads);
+        rt.core_threads(threads);
         rt.build()?
     };
 
-    #[cfg(feature = "load")]
-    if let Cmd::Load(l) = cmd {
-        return rt.block_on(l.run(threads));
+    match cmd {
+        Cmd::Load(l) => rt.block_on(l.run(threads)),
+        Cmd::Server(s) => rt.block_on(s.run()),
     }
-
-    #[cfg(feature = "server")]
-    if let Cmd::Server(s) = cmd {
-        return rt.block_on(s.run());
-    }
-
-    Ok(())
 }

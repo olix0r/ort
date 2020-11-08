@@ -1,8 +1,12 @@
-use crate::{latency, limit::Acquire, proto, Client, Distribution, MakeClient, Target};
+use crate::{latency, limit::Acquire, Distribution, Target};
+use ort_core::{MakeOrt, Ort, Spec};
 use rand::{distributions::Distribution as _, rngs::SmallRng};
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
+use std::{
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+    time::Duration,
 };
 use tracing::{debug, debug_span, info, trace, warn};
 use tracing_futures::Instrument;
@@ -65,8 +69,8 @@ impl<L: Acquire> Runner<L> {
 
     pub async fn run<C>(self, mut connect: C, targets: Vec<Target>)
     where
-        C: MakeClient<Target> + Clone + Send + 'static,
-        C::Client: Clone + Send + 'static,
+        C: MakeOrt<Target> + Clone + Send + 'static,
+        C::Ort: Clone + Send + 'static,
     {
         let Self {
             requests_per_target,
@@ -83,7 +87,10 @@ impl<L: Acquire> Runner<L> {
 
         for target in targets.into_iter().cycle() {
             let requests_per_target = Countdown::new(requests_per_target);
-            let client = connect.make_client(target.clone()).await;
+            let client = match connect.make_ort(target.clone()).await {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
 
             let limit = limit.clone();
             let requests_per_target = requests_per_target.clone();
@@ -112,22 +119,18 @@ impl<L: Acquire> Runner<L> {
                     trace!("Acquired permit");
 
                     // TODO generate request params (latency, error).
-                    let latency: ::prost_types::Duration = response_latencies.sample(&mut rng);
-                    let rsp_sz = response_sizes.sample(&mut rng);
+                    let latency: Duration = response_latencies.sample(&mut rng);
+                    let response_size = response_sizes.sample(&mut rng);
                     let mut client = client.clone();
                     tokio::spawn(
                         async move {
-                            let spec = proto::ResponseSpec {
+                            let spec = Spec {
                                 latency: latency.into(),
-                                result: Some(proto::response_spec::Result::Success(
-                                    proto::response_spec::Success {
-                                        size: rsp_sz as i64,
-                                    },
-                                )),
-                                ..proto::ResponseSpec::default()
+                                response_size: response_size as usize,
+                                ..Default::default()
                             };
-                            trace!(%rsp_sz, request = %r, "Sending request");
-                            match client.get(spec).await {
+                            trace!(%response_size, request = %r, "Sending request");
+                            match client.ort(spec).await {
                                 Ok(rsp) => {
                                     trace!(r, n, rsp_sz = rsp.data.len(), "Request complete")
                                 }
