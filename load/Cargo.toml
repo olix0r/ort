@@ -10,6 +10,7 @@ grpc-fmt = ["ort-grpc/rustfmt"]
 
 [dependencies]
 async-trait = "0.1"
+futures = "0.3"
 hdrhistogram = "7.1"
 hyper = "0.13.3"
 indexmap = "1.0"

@@ -15,8 +15,8 @@ use tokio::signal::{
 };
 
 #[derive(Clone, Debug, StructOpt)]
-#[structopt(about = "Load target")]
-pub struct Server {
+#[structopt(name = "server", about = "Load target")]
+pub struct Cmd {
     #[structopt(short, long, default_value = "0.0.0.0:8070")]
     grpc_addr: SocketAddr,
 
@@ -27,7 +27,7 @@ pub struct Server {
     tcp_addr: SocketAddr,
 }
 
-impl Server {
+impl Cmd {
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
         let rng = SmallRng::from_entropy();
         let replier = Replier::new(rng);

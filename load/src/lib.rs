@@ -34,9 +34,12 @@ use tracing_futures::Instrument;
 
 #[derive(StructOpt)]
 #[structopt(name = "load", about = "Load generator")]
-pub struct Opt {
+pub struct Cmd {
     #[structopt(long, parse(try_from_str), default_value = "0.0.0.0:8000")]
     admin_addr: SocketAddr,
+
+    #[structopt(long, default_value = "1")]
+    clients_per_target: usize,
 
     #[structopt(long)]
     requests_per_target: Option<usize>,
@@ -84,10 +87,11 @@ pub enum Flavor<H, G, T> {
 
 // === impl Load ===C
 
-impl Opt {
-    pub async fn run(self, threads: usize) -> Result<(), Box<dyn std::error::Error + 'static>> {
+impl Cmd {
+    pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
         let Self {
             admin_addr,
+            clients_per_target,
             requests_per_target,
             connect_timeout,
             request_timeout,
@@ -105,13 +109,19 @@ impl Opt {
         let histogram = Arc::new(RwLock::new(hdrhistogram::Histogram::new(3).unwrap()));
         let admin = Admin::new(histogram.clone());
 
+        if clients_per_target == 0 {
+            tracing::error!("--clients-per-target must be positive");
+            return Ok(()); // FIXME should be an error
+        }
+
         let limit = (
             Arc::new(Semaphore::new(
-                concurrency_limit.filter(|c| *c > 0).unwrap_or(threads * 2),
+                concurrency_limit.filter(|c| *c > 0).unwrap_or(clients_per_target),
             )),
             RateLimit::spawn(request_limit, request_limit_window),
         );
         let runner = Runner::new(
+            clients_per_target,
             requests_per_target.unwrap_or(0),
             total_requests.unwrap_or(0),
             limit,

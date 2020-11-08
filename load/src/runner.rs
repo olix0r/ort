@@ -1,4 +1,5 @@
 use crate::{latency, limit::Acquire, Distribution, Target};
+use futures::future;
 use ort_core::{MakeOrt, Ort, Spec};
 use rand::{distributions::Distribution as _, rngs::SmallRng};
 use std::{
@@ -13,6 +14,7 @@ use tracing_futures::Instrument;
 
 #[derive(Clone)]
 pub struct Runner<L> {
+    clients_per_target: usize,
     requests_per_target: usize,
     limit: L,
     total_requests: Countdown,
@@ -49,6 +51,7 @@ impl Countdown {
 
 impl<L: Acquire> Runner<L> {
     pub fn new(
+        clients_per_target: usize,
         requests_per_target: usize,
         total_requests: usize,
         limit: L,
@@ -58,6 +61,7 @@ impl<L: Acquire> Runner<L> {
     ) -> Self {
         let total_requests = Countdown::new(total_requests);
         Self {
+            clients_per_target,
             requests_per_target,
             limit,
             total_requests,
@@ -73,6 +77,7 @@ impl<L: Acquire> Runner<L> {
         C::Ort: Clone + Send + 'static,
     {
         let Self {
+            clients_per_target,
             requests_per_target,
             limit,
             total_requests,
@@ -87,63 +92,67 @@ impl<L: Acquire> Runner<L> {
 
         for target in targets.into_iter().cycle() {
             let requests_per_target = Countdown::new(requests_per_target);
-            let client = match connect.make_ort(target.clone()).await {
-                Ok(c) => c,
-                Err(_) => continue,
-            };
+            let mut handles = Vec::with_capacity(clients_per_target);
+            for _ in 0..clients_per_target {
+                let client = match connect.make_ort(target.clone()).await {
+                    Ok(c) => c,
+                    Err(_) => continue,
+                };
 
-            let limit = limit.clone();
-            let requests_per_target = requests_per_target.clone();
-            let response_latencies = response_latencies.clone();
-            let response_sizes = response_sizes.clone();
-            let total_requests = total_requests.clone();
-            let mut rng = rng.clone();
-            async move {
-                debug!(?requests_per_target.limit, ?total_requests.limit, "Sending requests");
-                loop {
-                    let r = match requests_per_target.advance() {
-                        Ok(r) => r,
-                        Err(()) => {
-                            debug!("No more requests to this target");
-                            return;
-                        }
-                    };
-                    let n = match total_requests.advance() {
-                        Ok(n) => n,
-                        Err(()) => {
-                            debug!("No more requests to any target");
-                            return;
-                        }
-                    };
-                    let permit = limit.acquire().await;
-                    trace!("Acquired permit");
-
-                    // TODO generate request params (latency, error).
-                    let latency: Duration = response_latencies.sample(&mut rng);
-                    let response_size = response_sizes.sample(&mut rng);
-                    let mut client = client.clone();
-                    tokio::spawn(
-                        async move {
-                            let spec = Spec {
-                                latency: latency.into(),
-                                response_size: response_size as usize,
-                                ..Default::default()
-                            };
-                            trace!(%response_size, request = %r, "Sending request");
-                            match client.ort(spec).await {
-                                Ok(rsp) => {
-                                    trace!(r, n, rsp_sz = rsp.data.len(), "Request complete")
-                                }
-                                Err(error) => info!(%error, r, n, "Request failed"),
+                let limit = limit.clone();
+                let requests_per_target = requests_per_target.clone();
+                let response_latencies = response_latencies.clone();
+                let response_sizes = response_sizes.clone();
+                let total_requests = total_requests.clone();
+                let mut rng = rng.clone();
+                let h = tokio::spawn(async move {
+                    debug!(?requests_per_target.limit, ?total_requests.limit, "Sending requests");
+                    loop {
+                        let r = match requests_per_target.advance() {
+                            Ok(r) => r,
+                            Err(()) => {
+                                debug!("No more requests to this target");
+                                return;
                             }
-                            drop(permit);
-                        }
-                        .in_current_span(),
-                    );
-                }
+                        };
+                        let n = match total_requests.advance() {
+                            Ok(n) => n,
+                            Err(()) => {
+                                debug!("No more requests to any target");
+                                return;
+                            }
+                        };
+                        let permit = limit.acquire().await;
+                        trace!("Acquired permit");
+
+                        // TODO generate request params (latency, error).
+                        let latency: Duration = response_latencies.sample(&mut rng);
+                        let response_size = response_sizes.sample(&mut rng);
+                        let mut client = client.clone();
+                        tokio::spawn(
+                            async move {
+                                let spec = Spec {
+                                    latency: latency.into(),
+                                    response_size: response_size as usize,
+                                    ..Default::default()
+                                };
+                                trace!(%response_size, request = %r, "Sending request");
+                                match client.ort(spec).await {
+                                    Ok(rsp) => {
+                                        trace!(r, n, rsp_sz = rsp.data.len(), "Request complete")
+                                    }
+                                    Err(error) => info!(%error, r, n, "Request failed"),
+                                }
+                                drop(permit);
+                            }
+                            .in_current_span(),
+                        );
+                    }
+                }.instrument(debug_span!("client", %target)));
+                handles.push(h);
             }
-            .instrument(debug_span!("client", %target))
-            .await;
+
+            future::join_all(handles).await;
 
             debug!(%target, "Complete");
         }

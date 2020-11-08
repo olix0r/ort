@@ -762,6 +762,7 @@ name = "ort-load"
 version = "0.1.8"
 dependencies = [
  "async-trait",
+ "futures",
  "hdrhistogram",
  "hyper",
  "indexmap",
