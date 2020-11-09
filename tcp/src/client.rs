@@ -1,5 +1,3 @@
-// XXX this doesn't really handle connection errors properly...
-
 use crate::{ReplyCodec, SpecCodec, PREFIX};
 use futures::prelude::*;
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};

@@ -1,5 +1,8 @@
 #![deny(warnings, rust_2018_idioms)]
 
+mod reconnect;
+
+pub use self::reconnect::MakeReconnect;
 use bytes::Bytes;
 use std::time::Duration;
 

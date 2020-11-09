@@ -14,7 +14,7 @@ use self::{
     admin::Admin, distribution::Distribution, metrics::MakeMetrics, rate_limit::RateLimit,
     runner::Runner, timeout::MakeRequestTimeout,
 };
-use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
+use ort_core::{Error, MakeOrt, MakeReconnect, Ort, Reply, Spec};
 use ort_grpc::client::MakeGrpc;
 use ort_http::client::MakeHttp;
 use ort_tcp::client::MakeTcp;
@@ -134,10 +134,12 @@ impl Cmd {
 
         let connect = {
             let http = MakeHttp::new(connect_timeout, http_close);
-            let grpc = MakeGrpc::new(connect_timeout, Duration::from_secs(1));
+            let grpc = MakeGrpc::new();
             let tcp = MakeTcp::new();
-            let timeout = MakeRequestTimeout::new((http, grpc, tcp), request_timeout);
-            MakeMetrics::new(timeout, histogram)
+            let connect = (http, grpc, tcp);
+            let timeout = MakeRequestTimeout::new(connect, request_timeout);
+            let metrics = MakeMetrics::new(timeout, histogram);
+            MakeReconnect::new(metrics, connect_timeout, Duration::from_secs(1))
         };
 
         let targets = Some(target).into_iter().chain(targets).collect::<Vec<_>>();
