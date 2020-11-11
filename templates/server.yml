@@ -4,6 +4,39 @@
 {{- $server := .Values.server }}
 {{- $linkerd := deepCopy .Values.linkerd | merge $server.linkerd }}
 {{- $protocols := .Values.protocols }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ort
+  name: server
+  namespace: {{$ns}}
+spec:
+  selector:
+    app: ort
+    ort.olix0r.net/role: server
+  ports:
+  {{- range $name, $proto := $protocols }}
+  {{-   if $proto }}
+    - port: {{ $proto.port }}
+      targetPort: {{ $proto.port }}
+      name: {{ $name }}
+  {{-   end }}
+  {{- end }}
+---
+apiVersion: split.smi-spec.io/v1alpha1
+kind: TrafficSplit
+metadata:
+  namespace: strest
+  name: server
+spec:
+  service: server
+  backends:
+  {{- range $i, $e := until (.Values.server.services | int) }}
+    - service: server-{{ printf "%03d" $i }}
+      weight: 1
+  {{- end }}
 {{- range $i, $e := until (.Values.server.services | int) }}
 ---
 kind: ServiceAccount
