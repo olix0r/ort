@@ -6,6 +6,16 @@
 {{- range $protoName, $proto := .Values.protocols }}
 {{-   if $proto}}
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: load-{{ $protoName }}
+  namespace: {{ $ns }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: load
+    ort.olix0r.net/protocol: {{ $protoName }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -31,6 +41,7 @@ spec:
       annotations:
 {{ $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
+      serviceAccount: load-{{ $protoName }}
       containers:
         - name: main
           image: {{ $img }}

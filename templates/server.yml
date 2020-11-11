@@ -6,6 +6,16 @@
 {{- $protocols := .Values.protocols }}
 {{- range $i, $e := until (.Values.server.services | int) }}
 ---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: server-{{printf "%03d" $i}}
+  namespace: {{ $ns }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: server
+    ort.olix0r.net/instance: {{quote $i}}
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -52,6 +62,7 @@ spec:
       annotations:
 {{ $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
+      serviceAccount: server-{{printf "%03d" $i}}
       containers:
         - name: main
           image: {{$img}}
