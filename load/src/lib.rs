@@ -85,7 +85,7 @@ pub enum Flavor<H, G, T> {
     Tcp(T),
 }
 
-// === impl Load ===C
+// === impl Load ===
 
 impl Cmd {
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
