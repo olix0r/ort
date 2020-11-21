@@ -73,8 +73,6 @@ pub struct Cmd {
     response_size: Distribution,
 
     target: Target,
-
-    targets: Vec<Target>,
 }
 
 type Target = Flavor<hyper::Uri, hyper::Uri, String>;
@@ -104,7 +102,6 @@ impl Cmd {
             response_size,
             total_requests,
             target,
-            targets,
         } = self;
 
         let histogram = Arc::new(RwLock::new(hdrhistogram::Histogram::new(3).unwrap()));
@@ -143,8 +140,7 @@ impl Cmd {
             MakeReconnect::new(metrics, connect_timeout, Duration::from_secs(1))
         };
 
-        let targets = Some(target).into_iter().chain(targets).collect::<Vec<_>>();
-        tokio::spawn(runner.run(connect, targets));
+        tokio::spawn(runner.run(connect, target));
 
         tokio::spawn(
             async move {

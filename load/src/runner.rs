@@ -1,5 +1,4 @@
 use crate::{latency, limit::Acquire, Distribution, Target};
-use futures::future;
 use ort_core::{MakeOrt, Ort, Spec};
 use rand::{distributions::Distribution as _, rngs::SmallRng};
 use std::{
@@ -9,7 +8,7 @@ use std::{
     },
     time::Duration,
 };
-use tracing::{debug, debug_span, info, trace, warn};
+use tracing::{debug, debug_span, info, trace};
 use tracing_futures::Instrument;
 
 #[derive(Clone)]
@@ -71,7 +70,7 @@ impl<L: Acquire> Runner<L> {
         }
     }
 
-    pub async fn run<C>(self, mut connect: C, targets: Vec<Target>)
+    pub async fn run<C>(self, mut connect: C, target: Target)
     where
         C: MakeOrt<Target> + Clone + Send + 'static,
         C::Ort: Clone + Send + 'static,
@@ -86,26 +85,22 @@ impl<L: Acquire> Runner<L> {
             rng,
         } = self;
 
-        if requests_per_target == 0 && targets.len() > 1 {
-            warn!("No request-per-target limit. All but the first target will be ignored");
-        }
+        let requests_per_target = Countdown::new(requests_per_target);
+        let mut handles = Vec::with_capacity(clients_per_target);
+        for _ in 0..clients_per_target {
+            let client = match connect.make_ort(target.clone()).await {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
 
-        for target in targets.into_iter().cycle() {
-            let requests_per_target = Countdown::new(requests_per_target);
-            let mut handles = Vec::with_capacity(clients_per_target);
-            for _ in 0..clients_per_target {
-                let client = match connect.make_ort(target.clone()).await {
-                    Ok(c) => c,
-                    Err(_) => continue,
-                };
-
-                let limit = limit.clone();
-                let requests_per_target = requests_per_target.clone();
-                let response_latencies = response_latencies.clone();
-                let response_sizes = response_sizes.clone();
-                let total_requests = total_requests.clone();
-                let mut rng = rng.clone();
-                let h = tokio::spawn(async move {
+            let limit = limit.clone();
+            let requests_per_target = requests_per_target.clone();
+            let response_latencies = response_latencies.clone();
+            let response_sizes = response_sizes.clone();
+            let total_requests = total_requests.clone();
+            let mut rng = rng.clone();
+            let h = tokio::spawn(
+                async move {
                     debug!(?requests_per_target.limit, ?total_requests.limit, "Sending requests");
                     loop {
                         let r = match requests_per_target.advance() {
@@ -125,7 +120,6 @@ impl<L: Acquire> Runner<L> {
                         let permit = limit.acquire().await;
                         trace!("Acquired permit");
 
-                        // TODO generate request params (latency, error).
                         let latency: Duration = response_latencies.sample(&mut rng);
                         let response_size = response_sizes.sample(&mut rng);
                         let mut client = client.clone();
@@ -148,13 +142,12 @@ impl<L: Acquire> Runner<L> {
                             .in_current_span(),
                         );
                     }
-                }.instrument(debug_span!("client", %target)));
-                handles.push(h);
-            }
-
-            future::join_all(handles).await;
-
-            debug!(%target, "Complete");
+                }
+                .instrument(debug_span!("client", %target)),
+            );
+            handles.push(h);
         }
+
+        debug!(%target, "Complete");
     }
 }
