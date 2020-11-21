@@ -42,9 +42,6 @@ pub struct Cmd {
     #[structopt(long, default_value = "1")]
     clients_per_target: usize,
 
-    #[structopt(long)]
-    requests_per_target: Option<usize>,
-
     #[structopt(long, default_value = "0")]
     request_limit: usize,
 
@@ -91,7 +88,6 @@ impl Cmd {
         let Self {
             admin_addr,
             clients_per_target,
-            requests_per_target,
             connect_timeout,
             request_timeout,
             http_close,
@@ -122,7 +118,6 @@ impl Cmd {
         );
         let runner = Runner::new(
             clients_per_target,
-            requests_per_target.unwrap_or(0),
             total_requests.unwrap_or(0),
             limit,
             Arc::new(response_latency),

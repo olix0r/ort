@@ -14,7 +14,6 @@ use tracing_futures::Instrument;
 #[derive(Clone)]
 pub struct Runner<L> {
     clients_per_target: usize,
-    requests_per_target: usize,
     limit: L,
     total_requests: Countdown,
     response_latencies: Arc<latency::Distribution>,
@@ -51,7 +50,6 @@ impl Countdown {
 impl<L: Acquire> Runner<L> {
     pub fn new(
         clients_per_target: usize,
-        requests_per_target: usize,
         total_requests: usize,
         limit: L,
         response_latencies: Arc<latency::Distribution>,
@@ -61,7 +59,6 @@ impl<L: Acquire> Runner<L> {
         let total_requests = Countdown::new(total_requests);
         Self {
             clients_per_target,
-            requests_per_target,
             limit,
             total_requests,
             response_latencies,
@@ -77,7 +74,6 @@ impl<L: Acquire> Runner<L> {
     {
         let Self {
             clients_per_target,
-            requests_per_target,
             limit,
             total_requests,
             response_latencies,
@@ -85,7 +81,6 @@ impl<L: Acquire> Runner<L> {
             rng,
         } = self;
 
-        let requests_per_target = Countdown::new(requests_per_target);
         let mut handles = Vec::with_capacity(clients_per_target);
         for _ in 0..clients_per_target {
             let client = match connect.make_ort(target.clone()).await {
@@ -94,22 +89,14 @@ impl<L: Acquire> Runner<L> {
             };
 
             let limit = limit.clone();
-            let requests_per_target = requests_per_target.clone();
             let response_latencies = response_latencies.clone();
             let response_sizes = response_sizes.clone();
             let total_requests = total_requests.clone();
             let mut rng = rng.clone();
             let h = tokio::spawn(
                 async move {
-                    debug!(?requests_per_target.limit, ?total_requests.limit, "Sending requests");
+                    debug!(?total_requests.limit, "Sending requests");
                     loop {
-                        let r = match requests_per_target.advance() {
-                            Ok(r) => r,
-                            Err(()) => {
-                                debug!("No more requests to this target");
-                                return;
-                            }
-                        };
                         let n = match total_requests.advance() {
                             Ok(n) => n,
                             Err(()) => {
@@ -130,12 +117,12 @@ impl<L: Acquire> Runner<L> {
                                     response_size: response_size as usize,
                                     ..Default::default()
                                 };
-                                trace!(%response_size, request = %r, "Sending request");
+                                trace!(%response_size, "Sending request");
                                 match client.ort(spec).await {
                                     Ok(rsp) => {
-                                        trace!(r, n, rsp_sz = rsp.data.len(), "Request complete")
+                                        trace!(n, rsp_sz = rsp.data.len(), "Request complete")
                                     }
-                                    Err(error) => info!(%error, r, n, "Request failed"),
+                                    Err(error) => info!(%error, n, "Request failed"),
                                 }
                                 drop(permit);
                             }
