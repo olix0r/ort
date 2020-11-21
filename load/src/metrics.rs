@@ -1,7 +1,7 @@
 use hdrhistogram as hdr;
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
+use parking_lot::RwLock;
 use std::{sync::Arc, time::Instant};
-use tokio::sync::RwLock;
 use tracing::trace;
 
 #[derive(Clone)]
@@ -46,7 +46,7 @@ impl<C: Ort + Send + 'static> Ort for Metrics<C> {
         let elapsed = Instant::now() - t0;
         let micros = elapsed.as_micros();
         trace!(%micros);
-        let mut h = self.histogram.write().await;
+        let mut h = self.histogram.write();
         if micros < std::u64::MAX as u128 {
             h.saturating_record(micros as u64);
         } else {

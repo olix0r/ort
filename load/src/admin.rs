@@ -1,8 +1,8 @@
 use crate::report::Report;
 use hdrhistogram::Histogram;
+use parking_lot::RwLock;
 use serde_json as json;
 use std::{convert::Infallible, net::SocketAddr, sync::Arc};
-use tokio::sync::RwLock;
 
 #[derive(Clone)]
 pub struct Admin {
@@ -47,10 +47,7 @@ impl Admin {
 
             "/report.json" => {
                 if let hyper::Method::GET = *req.method() {
-                    let report = {
-                        let h = self.histogram.read().await;
-                        Report::from(&*h)
-                    };
+                    let report = Report::from(&*self.histogram.read());
                     return Ok(hyper::Response::builder()
                         .status(hyper::StatusCode::OK)
                         .header(hyper::header::CONTENT_TYPE, "application/json")

@@ -18,6 +18,7 @@ use ort_core::{Error, MakeOrt, MakeReconnect, Ort, Reply, Spec};
 use ort_grpc::client::MakeGrpc;
 use ort_http::client::MakeHttp;
 use ort_tcp::client::MakeTcp;
+use parking_lot::RwLock;
 use rand::{rngs::SmallRng, SeedableRng};
 use std::{net::SocketAddr, str::FromStr, sync::Arc};
 use structopt::StructOpt;
@@ -26,7 +27,7 @@ use tokio::{
         ctrl_c,
         unix::{signal, SignalKind},
     },
-    sync::{RwLock, Semaphore},
+    sync::Semaphore,
     time::Duration,
 };
 use tracing::debug_span;
@@ -85,7 +86,7 @@ pub enum Flavor<H, G, T> {
     Tcp(T),
 }
 
-// === impl Load ===C
+// === impl Load ===
 
 impl Cmd {
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
