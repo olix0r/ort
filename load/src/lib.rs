@@ -27,7 +27,6 @@ use tokio::{
         ctrl_c,
         unix::{signal, SignalKind},
     },
-    sync::Semaphore,
     time::Duration,
 };
 use tracing::debug_span;
@@ -38,9 +37,6 @@ use tracing_futures::Instrument;
 pub struct Cmd {
     #[structopt(long, parse(try_from_str), default_value = "0.0.0.0:8000")]
     admin_addr: SocketAddr,
-
-    #[structopt(long, default_value = "1")]
-    clients_per_target: usize,
 
     #[structopt(long, default_value = "0")]
     request_limit: usize,
@@ -59,9 +55,6 @@ pub struct Cmd {
 
     #[structopt(long)]
     http_close: bool,
-
-    #[structopt(long)]
-    concurrency_limit: Option<usize>,
 
     #[structopt(long, default_value = "0")]
     response_latency: latency::Distribution,
@@ -87,11 +80,9 @@ impl Cmd {
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
         let Self {
             admin_addr,
-            clients_per_target,
             connect_timeout,
             request_timeout,
             http_close,
-            concurrency_limit,
             request_limit,
             request_limit_window,
             response_latency,
@@ -103,21 +94,8 @@ impl Cmd {
         let histogram = Arc::new(RwLock::new(hdrhistogram::Histogram::new(3).unwrap()));
         let admin = Admin::new(histogram.clone());
 
-        if clients_per_target == 0 {
-            tracing::error!("--clients-per-target must be positive");
-            return Ok(()); // FIXME should be an error
-        }
-
-        let limit = (
-            Arc::new(Semaphore::new(
-                concurrency_limit
-                    .filter(|c| *c > 0)
-                    .unwrap_or(clients_per_target),
-            )),
-            RateLimit::spawn(request_limit, request_limit_window),
-        );
+        let limit = RateLimit::spawn(request_limit, request_limit_window);
         let runner = Runner::new(
-            clients_per_target,
             total_requests.unwrap_or(0),
             limit,
             Arc::new(response_latency),
