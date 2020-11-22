@@ -96,13 +96,13 @@ impl<L: Acquire> Runner<L> {
             tokio::spawn(
                 async move {
                     let spec = Spec {
-                        latency: latency.into(),
+                        latency,
                         response_size: response_size as usize,
                         ..Default::default()
                     };
-                    trace!(%response_size, "Sending request");
+                    trace!(%response_size, ?latency, "Sending request");
                     match client.ort(spec).await {
-                        Ok(rsp) => trace!(n, rsp_sz = rsp.data.len(), "Request complete"),
+                        Ok(_) => trace!(n, "Request complete"),
                         Err(error) => info!(%error, n, "Request failed"),
                     }
                     drop(permit);

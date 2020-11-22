@@ -1,4 +1,4 @@
-use crate::{ReplyCodec, SpecCodec, PREFIX, PREFIX_LEN};
+use crate::{Muxish, MuxishCodec, ReplyCodec, SpecCodec, PREFIX, PREFIX_LEN};
 use futures::prelude::*;
 use ort_core::{Error, Ort};
 use std::net::SocketAddr;
@@ -37,8 +37,8 @@ impl<O: Ort> Server<O> {
                     return;
                 }
 
-                let mut read = FramedRead::new(sock_rx, SpecCodec::default());
-                let mut write = FramedWrite::new(sock_tx, ReplyCodec::default());
+                let mut read = FramedRead::new(sock_rx, MuxishCodec::from(SpecCodec::default()));
+                let mut write = FramedWrite::new(sock_tx, MuxishCodec::from(ReplyCodec::default()));
 
                 loop {
                     match read.next().await {
@@ -47,7 +47,7 @@ impl<O: Ort> Server<O> {
                             info!(%error, "Failed reading message");
                             return;
                         }
-                        Some(Ok(spec)) => {
+                        Some(Ok(Muxish { id, value: spec })) => {
                             let reply = match srv.ort(spec).await {
                                 Ok(reply) => reply,
                                 Err(error) => {
@@ -55,7 +55,7 @@ impl<O: Ort> Server<O> {
                                     return;
                                 }
                             };
-                            if let Err(error) = write.send(reply).await {
+                            if let Err(error) = write.send(Muxish { id, value: reply }).await {
                                 info!(%error, "Failed writing reply");
                                 return;
                             }

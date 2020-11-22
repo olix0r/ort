@@ -1,4 +1,4 @@
-use crate::{ReplyCodec, SpecCodec, PREFIX};
+use crate::{Muxish, MuxishCodec, ReplyCodec, SpecCodec, PREFIX};
 use futures::prelude::*;
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
 use std::sync::Arc;
@@ -16,8 +16,9 @@ pub struct MakeTcp {}
 pub struct Tcp(Arc<Mutex<Inner>>);
 
 struct Inner {
-    write: FramedWrite<tcp::OwnedWriteHalf, SpecCodec>,
-    read: FramedRead<tcp::OwnedReadHalf, ReplyCodec>,
+    next_id: u64,
+    write: FramedWrite<tcp::OwnedWriteHalf, MuxishCodec<SpecCodec>>,
+    read: FramedRead<tcp::OwnedReadHalf, MuxishCodec<ReplyCodec>>,
 }
 
 impl MakeTcp {
@@ -36,6 +37,7 @@ impl MakeOrt<String> for MakeTcp {
         stream.write(PREFIX).await?;
         let (read, write) = stream.into_split();
         Ok(Tcp(Arc::new(Mutex::new(Inner {
+            next_id: 1,
             write: FramedWrite::new(write, Default::default()),
             read: FramedRead::new(read, Default::default()),
         }))))
@@ -46,12 +48,33 @@ impl MakeOrt<String> for MakeTcp {
 impl Ort for Tcp {
     async fn ort(&mut self, spec: Spec) -> Result<Reply, Error> {
         let Inner {
+            ref mut next_id,
             ref mut read,
             ref mut write,
         } = *self.0.lock().await;
-        write.send(spec).await?;
+
+        if *next_id == std::u64::MAX {
+            return Err(Exhausted(()).into());
+        }
+        let id = *next_id;
+        *next_id += 1;
+
+        write.send(Muxish { id, value: spec }).await?;
+
         read.try_next()
             .await?
             .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotConnected).into())
+            .map(|Muxish { value, .. }| value)
     }
 }
+
+#[derive(Debug)]
+struct Exhausted(());
+
+impl std::fmt::Display for Exhausted {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Ran out of ids")
+    }
+}
+
+impl std::error::Error for Exhausted {}
