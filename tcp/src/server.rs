@@ -1,26 +1,31 @@
-use crate::{muxer, ReplyCodec, SpecCodec, PREFIX, PREFIX_LEN};
+use crate::{muxer::Muxer, ReplyCodec, SpecCodec, PREFIX, PREFIX_LEN};
 use futures::{prelude::*, stream::FuturesUnordered};
 use ort_core::{Error, Ort};
 use std::net::SocketAddr;
 use tokio::prelude::*;
-use tokio_util::codec::{FramedRead, FramedWrite};
-use tracing::{error, info};
+use tracing::info;
 
-pub struct Server<O>(O);
+pub struct Server<O> {
+    inner: O,
+    max_in_flight: usize,
+}
 
 impl<O: Ort> Server<O> {
     pub fn new(inner: O) -> Self {
-        Self(inner)
+        Self {
+            inner,
+            max_in_flight: 100_000,
+        }
     }
 
     pub async fn serve(self, addr: SocketAddr) -> Result<(), Error> {
         let mut lis = tokio::net::TcpListener::bind(addr).await?;
-
         loop {
-            let srv = self.0.clone();
-            let (mut stream, _addr) = lis.accept().await?;
+            let (sock, _addr) = lis.accept().await?;
+            let srv = self.inner.clone();
+            let max_in_flight = self.max_in_flight;
             tokio::spawn(async move {
-                let (mut sock_rx, sock_tx) = stream.split();
+                let (mut sock_rx, sock_tx) = sock.into_split();
 
                 let mut prefix = [0u8; PREFIX_LEN];
                 debug_assert_eq!(prefix.len(), PREFIX.len());
@@ -31,56 +36,46 @@ impl<O: Ort> Server<O> {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
                         "Invalid protocol preface",
-                    ));
+                    )
+                    .into());
                 }
 
-                let mut read = FramedRead::new(sock_rx, muxer::Codec::from(SpecCodec::default()));
-                let mut write =
-                    FramedWrite::new(sock_tx, muxer::Codec::from(ReplyCodec::default()));
+                let muxer = Muxer::new(ReplyCodec::default(), SpecCodec::default(), max_in_flight);
+                let mut rx = muxer.spawn_server(sock_rx, sock_tx);
 
-                let mut pending = FuturesUnordered::new();
+                let mut in_flight = FuturesUnordered::new();
 
                 loop {
+                    if in_flight.len() == max_in_flight {
+                        in_flight.try_next().await?;
+                    }
+
                     tokio::select! {
-                        msg = read.try_next() => {
-                            if let Some(muxer::Frame { id, value: spec }) = msg? {
-                                let mut srv = srv.clone();
-                                let fut = tokio::spawn(async move {
-                                    srv.ort(spec)
-                                        .await
-                                        .map(move |value| muxer::Frame { id, value })
-                                        .map_err(|e| {
-                                            io::Error::new(
-                                                io::ErrorKind::InvalidData,
-                                                e.to_string(),
-                                            )
-                                        })
-                                }).map(|res| match res {
-                                    Ok(res) => res,
-                                    Err(e) => Err(io::Error::new(io::ErrorKind::Other, e.to_string())),
-                                });
-
-                                pending.push(fut.map_err(|_| {
-                                    io::Error::new(
-                                        io::ErrorKind::ConnectionReset,
-                                        "Connection closed",
-                                    )
-                                }));
-                            }
-                        },
-
-                        res = pending.next() => match res {
-                            None => {},
-                            Some(Ok(reply)) => {
-                                write.send(reply).await?;
-                            }
-                            Some(Err(error)) => {
-                                error!(?error, "Runtime failure");
-                                break;
-                            }
-                        }
+                         res = in_flight.try_next() => {
+                             if let Err(e) = res {
+                                 return Err(e);
+                             }
+                         }
+                         next = rx.next() => match next {
+                             None => break,
+                             Some((spec, tx)) => {
+                                 let mut srv = srv.clone();
+                                 let h = tokio::spawn(async move {
+                                     let reply = srv.ort(spec).await?;
+                                     let _ = tx.send(reply);
+                                     Ok::<(), Error>(())
+                                 });
+                                 in_flight.push(h.map(|res| match res {
+                                     Ok(Ok(())) => Ok(()),
+                                     Ok(Err(e)) => Err(e),
+                                     Err(e) => Err(e.into()),
+                                 }));
+                             }
+                         }
                     }
                 }
+
+                while let Some(()) = in_flight.try_next().await? {}
 
                 Ok(())
             });

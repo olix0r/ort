@@ -17,8 +17,8 @@ pub struct Tcp(Arc<Mutex<Inner>>);
 
 struct Inner {
     next_id: u64,
-    write: FramedWrite<tcp::OwnedWriteHalf, muxer::Codec<SpecCodec>>,
-    read: FramedRead<tcp::OwnedReadHalf, muxer::Codec<ReplyCodec>>,
+    write: FramedWrite<tcp::OwnedWriteHalf, muxer::FramedEncode<SpecCodec>>,
+    read: FramedRead<tcp::OwnedReadHalf, muxer::FramedDecode<ReplyCodec>>,
 }
 
 impl MakeTcp {
