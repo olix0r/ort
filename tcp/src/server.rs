@@ -1,10 +1,10 @@
 use crate::{Muxish, MuxishCodec, ReplyCodec, SpecCodec, PREFIX, PREFIX_LEN};
-use futures::prelude::*;
+use futures::{prelude::*, stream::FuturesUnordered};
 use ort_core::{Error, Ort};
 use std::net::SocketAddr;
 use tokio::prelude::*;
 use tokio_util::codec::{FramedRead, FramedWrite};
-use tracing::info;
+use tracing::{error, info};
 
 pub struct Server<O>(O);
 
@@ -17,51 +17,71 @@ impl<O: Ort> Server<O> {
         let mut lis = tokio::net::TcpListener::bind(addr).await?;
 
         loop {
-            let mut srv = self.0.clone();
+            let srv = self.0.clone();
             let (mut stream, _addr) = lis.accept().await?;
             tokio::spawn(async move {
                 let (mut sock_rx, sock_tx) = stream.split();
 
                 let mut prefix = [0u8; PREFIX_LEN];
                 debug_assert_eq!(prefix.len(), PREFIX.len());
-                let _sz = match sock_rx.read_exact(&mut prefix).await {
-                    Ok(sz) => sz,
-                    Err(error) => {
-                        info!(%error, "Could not read prefix");
-                        return;
-                    }
-                };
+                let _sz = sock_rx.read_exact(&mut prefix).await?;
 
                 if prefix != PREFIX {
                     info!(?prefix, expected = ?PREFIX, "Client isn't speaking our language");
-                    return;
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        "Invalid protocol preface",
+                    ));
                 }
 
                 let mut read = FramedRead::new(sock_rx, MuxishCodec::from(SpecCodec::default()));
                 let mut write = FramedWrite::new(sock_tx, MuxishCodec::from(ReplyCodec::default()));
 
+                let mut pending = FuturesUnordered::new();
+
                 loop {
-                    match read.next().await {
-                        None => return,
-                        Some(Err(error)) => {
-                            info!(%error, "Failed reading message");
-                            return;
-                        }
-                        Some(Ok(Muxish { id, value: spec })) => {
-                            let reply = match srv.ort(spec).await {
-                                Ok(reply) => reply,
-                                Err(error) => {
-                                    info!(%error, "Failed replying");
-                                    return;
-                                }
-                            };
-                            if let Err(error) = write.send(Muxish { id, value: reply }).await {
-                                info!(%error, "Failed writing reply");
-                                return;
+                    tokio::select! {
+                        msg = read.try_next() => {
+                            if let Some(Muxish { id, value: spec }) = msg? {
+                                let mut srv = srv.clone();
+                                let fut = tokio::spawn(async move {
+                                    srv.ort(spec)
+                                        .await
+                                        .map(move |value| Muxish { id, value })
+                                        .map_err(|e| {
+                                            io::Error::new(
+                                                io::ErrorKind::InvalidData,
+                                                e.to_string(),
+                                            )
+                                        })
+                                }).map(|res| match res {
+                                    Ok(res) => res,
+                                    Err(e) => Err(io::Error::new(io::ErrorKind::Other, e.to_string())),
+                                });
+
+                                pending.push(fut.map_err(|_| {
+                                    io::Error::new(
+                                        io::ErrorKind::ConnectionReset,
+                                        "Connection closed",
+                                    )
+                                }));
+                            }
+                        },
+
+                        res = pending.next() => match res {
+                            None => {},
+                            Some(Ok(reply)) => {
+                                write.send(reply).await?;
+                            }
+                            Some(Err(error)) => {
+                                error!(?error, "Runtime failure");
+                                break;
                             }
                         }
                     }
                 }
+
+                Ok(())
             });
         }
     }

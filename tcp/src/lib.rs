@@ -4,7 +4,7 @@ pub mod client;
 pub mod server;
 
 use bytes::{Buf, BufMut, BytesMut};
-use ort_core::{Error, Reply, Spec};
+use ort_core::{Reply, Spec};
 use tokio::{io, time};
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
@@ -120,9 +120,9 @@ impl Decoder for SpecCodec {
 }
 
 impl Encoder<Spec> for SpecCodec {
-    type Error = Error;
+    type Error = io::Error;
 
-    fn encode(&mut self, spec: Spec, dst: &mut BytesMut) -> Result<(), Error> {
+    fn encode(&mut self, spec: Spec, dst: &mut BytesMut) -> io::Result<()> {
         dst.reserve(4 + 4);
         dst.put_u32(spec.latency.as_millis() as u32);
         dst.put_u32(spec.response_size as u32);
@@ -144,9 +144,9 @@ impl Default for ReplyCodec {
 
 impl Decoder for ReplyCodec {
     type Item = Reply;
-    type Error = Error;
+    type Error = io::Error;
 
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Reply>, Error> {
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Reply>, io::Error> {
         match self.0.decode(src)? {
             None => Ok(None),
             Some(buf) => Ok(Some(Reply { data: buf.freeze() })),
@@ -155,9 +155,9 @@ impl Decoder for ReplyCodec {
 }
 
 impl Encoder<Reply> for ReplyCodec {
-    type Error = Error;
+    type Error = io::Error;
 
-    fn encode(&mut self, Reply { data }: Reply, dst: &mut BytesMut) -> Result<(), Error> {
+    fn encode(&mut self, Reply { data }: Reply, dst: &mut BytesMut) -> io::Result<()> {
         self.0.encode(data, dst)?;
         Ok(())
     }
