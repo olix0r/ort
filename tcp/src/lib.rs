@@ -2,15 +2,13 @@
 
 pub mod client;
 pub mod muxer;
+pub mod preface;
 pub mod server;
 
 use bytes::{Buf, BufMut, BytesMut};
 use ort_core::{Reply, Spec};
 use tokio::{io, time};
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
-
-const PREFIX_LEN: usize = 23;
-static PREFIX: &[u8] = b"ort.olix0r.net/load\r\n\r\n";
 
 #[derive(Default)]
 struct SpecCodec(());

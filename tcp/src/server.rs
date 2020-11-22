@@ -1,9 +1,8 @@
-use crate::{muxer::Muxer, ReplyCodec, SpecCodec, PREFIX, PREFIX_LEN};
+use crate::{muxer, preface, ReplyCodec, SpecCodec};
 use futures::{prelude::*, stream::FuturesUnordered};
 use ort_core::{Error, Ort};
 use std::net::SocketAddr;
-use tokio::prelude::*;
-use tracing::info;
+use tokio_util::codec::{FramedRead, FramedWrite};
 
 pub struct Server<O> {
     inner: O,
@@ -22,29 +21,19 @@ impl<O: Ort> Server<O> {
         let mut lis = tokio::net::TcpListener::bind(addr).await?;
         loop {
             let (sock, _addr) = lis.accept().await?;
+            let decode = preface::Codec::from(muxer::FramedDecode::from(SpecCodec::default()));
+            let encode = muxer::FramedEncode::from(ReplyCodec::default());
+            let (rio, wio) = sock.into_split();
+            let mut rx = muxer::spawn_server(
+                FramedRead::new(rio, decode),
+                FramedWrite::new(wio, encode),
+                self.max_in_flight,
+            );
+
             let srv = self.inner.clone();
             let max_in_flight = self.max_in_flight;
             tokio::spawn(async move {
-                let (mut sock_rx, sock_tx) = sock.into_split();
-
-                let mut prefix = [0u8; PREFIX_LEN];
-                debug_assert_eq!(prefix.len(), PREFIX.len());
-                let _sz = sock_rx.read_exact(&mut prefix).await?;
-
-                if prefix != PREFIX {
-                    info!(?prefix, expected = ?PREFIX, "Client isn't speaking our language");
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Invalid protocol preface",
-                    )
-                    .into());
-                }
-
-                let muxer = Muxer::new(ReplyCodec::default(), SpecCodec::default(), max_in_flight);
-                let mut rx = muxer.spawn_server(sock_rx, sock_tx);
-
                 let mut in_flight = FuturesUnordered::new();
-
                 loop {
                     if in_flight.len() == max_in_flight {
                         in_flight.try_next().await?;

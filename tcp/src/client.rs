@@ -1,10 +1,9 @@
-use crate::{muxer, ReplyCodec, SpecCodec, PREFIX};
+use crate::{muxer, preface, ReplyCodec, SpecCodec};
 use futures::prelude::*;
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
 use std::sync::Arc;
 use tokio::{
     net::{tcp, TcpStream},
-    prelude::*,
     sync::Mutex,
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
@@ -17,7 +16,7 @@ pub struct Tcp(Arc<Mutex<Inner>>);
 
 struct Inner {
     next_id: u64,
-    write: FramedWrite<tcp::OwnedWriteHalf, muxer::FramedEncode<SpecCodec>>,
+    write: FramedWrite<tcp::OwnedWriteHalf, preface::Codec<muxer::FramedEncode<SpecCodec>>>,
     read: FramedRead<tcp::OwnedReadHalf, muxer::FramedDecode<ReplyCodec>>,
 }
 
@@ -32,9 +31,8 @@ impl MakeOrt<String> for MakeTcp {
     type Ort = Tcp;
 
     async fn make_ort(&mut self, target: String) -> Result<Tcp, Error> {
-        let mut stream = TcpStream::connect(target).await?;
+        let stream = TcpStream::connect(target).await?;
         stream.set_nodelay(true)?;
-        stream.write(PREFIX).await?;
         let (read, write) = stream.into_split();
         Ok(Tcp(Arc::new(Mutex::new(Inner {
             next_id: 1,

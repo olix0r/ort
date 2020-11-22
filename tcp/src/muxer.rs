@@ -38,120 +38,104 @@ enum DecodeState {
     Head { id: u64 },
 }
 
-// === impl Muxer ===
+#[allow(warnings)]
+pub fn spawn_client<Req, Rsp, W, E, R, D>(
+    mut write: FramedWrite<W, E>,
+    mut read: FramedRead<R, D>,
+    max_in_flight: usize,
+) -> mpsc::Sender<(Req, oneshot::Receiver<Result<Rsp, D::Error>>)>
+where
+    Req: Send + 'static,
+    Rsp: Send + 'static,
+    E: Encoder<Frame<Req>> + Send + 'static,
+    D: Decoder<Item = Frame<Rsp>> + Send + 'static,
+    D::Error: Send + 'static,
+    R: io::AsyncRead + Send + 'static,
+    W: io::AsyncWrite + Send + 'static,
+{
+    let (tx, mut rx) = mpsc::channel(max_in_flight);
 
-impl<E, D> Muxer<E, D> {
-    pub fn new(enc: E, dec: D, max_in_flight: usize) -> Self {
-        Self {
-            max_in_flight,
-            encoder: enc.into(),
-            decoder: dec.into(),
+    tokio::spawn(async move {
+        let mut next_id = 1u64;
+        let mut in_flight = HashMap::<u64, oneshot::Sender<Result<D::Item, D::Error>>>::new();
+        loop {
+            let _ = rx.next().await;
         }
-    }
+    });
 
-    #[allow(warnings)]
-    pub fn spawn_client<Req, R, W>(
-        self,
-        rio: R,
-        wio: W,
-    ) -> mpsc::Sender<(Req, oneshot::Receiver<Result<D::Item, D::Error>>)>
-    where
-        Req: Send + 'static,
-        E: Encoder<Req> + Send + 'static,
-        D: Decoder + Send + 'static,
-        D::Item: Send + 'static,
-        D::Error: Send + 'static,
-        R: io::AsyncRead + Send + 'static,
-        W: io::AsyncWrite + Send + 'static,
-    {
-        let (tx, mut rx) = mpsc::channel(self.max_in_flight);
+    tx
+}
 
-        tokio::spawn(async move {
-            let mut next_id = 1u64;
-            let mut write = FramedWrite::new(wio, self.encoder);
-            let mut read = FramedRead::new(rio, self.decoder);
-            let mut in_flight = HashMap::<u64, oneshot::Sender<Result<D::Item, D::Error>>>::new();
-            loop {
-                let _ = rx.next().await;
-            }
-        });
+pub fn spawn_server<Req, Rsp, D, R, E, W>(
+    mut read: FramedRead<R, D>,
+    mut write: FramedWrite<W, E>,
+    max_in_flight: usize,
+) -> mpsc::Receiver<(Req, oneshot::Sender<Rsp>)>
+where
+    Req: Send + 'static,
+    Rsp: Send + 'static,
+    E: Encoder<Frame<Rsp>, Error = io::Error> + Send + 'static,
+    D: Decoder<Item = Frame<Req>, Error = io::Error> + Send + 'static,
+    R: io::AsyncRead + Send + Unpin + 'static,
+    W: io::AsyncWrite + Send + Unpin + 'static,
+{
+    let (tx, rx) = mpsc::channel(max_in_flight);
 
-        tx
-    }
+    tokio::spawn(async move {
+        let mut pending = FuturesUnordered::new();
 
-    pub fn spawn_server<Rsp, R, W>(
-        self,
-        rio: R,
-        wio: W,
-    ) -> mpsc::Receiver<(D::Item, oneshot::Sender<Rsp>)>
-    where
-        Rsp: Send + 'static,
-        E: Encoder<Rsp, Error = io::Error> + Send + 'static,
-        D: Decoder<Error = io::Error> + Send + 'static,
-        D::Item: Send + 'static,
-        R: io::AsyncRead + Send + Unpin + 'static,
-        W: io::AsyncWrite + Send + Unpin + 'static,
-    {
-        let (tx, rx) = mpsc::channel(self.max_in_flight);
-        let mut read = FramedRead::new(rio, self.decoder);
-        let mut write = FramedWrite::new(wio, self.encoder);
-
-        tokio::spawn(async move {
-            let mut pending = FuturesUnordered::new();
-
-            loop {
-                tokio::select! {
-                    r = read.try_next() => {
-                        let msg = match r {
-                            Ok(res) => res,
-                            Err(e) => return Err(e),
-                        };
-                        if let Some(Frame { id, value }) = msg {
-                            let mut tx = tx.clone();
-                            let fut = tokio::spawn(async move {
-                                let (rsp_tx, rsp_rx) = oneshot::channel();
-                                match tx.send((value, rsp_tx)).await {
-                                    Err(_) => {
-                                        Err(io::Error::new(io::ErrorKind::ConnectionAborted, "Server disconnected"))
-                                    }
-                                    Ok(()) => {
-                                        rsp_rx.await
-                                            .map(move |value| Frame { id, value })
-                                            .map_err(|_| {
-                                                io::Error::new(io::ErrorKind::ConnectionAborted, "Server dropped response")
-                                            })
-                                    }
+        loop {
+            tokio::select! {
+                r = read.try_next() => {
+                    let msg = match r {
+                        Ok(res) => res,
+                        Err(e) => return Err(e),
+                    };
+                    if let Some(Frame { id, value }) = msg {
+                        let mut tx = tx.clone();
+                        let fut = tokio::spawn(async move {
+                            let (rsp_tx, rsp_rx) = oneshot::channel();
+                            match tx.send((value, rsp_tx)).await {
+                                Err(_) => {
+                                    Err(io::Error::new(io::ErrorKind::ConnectionAborted, "Server disconnected"))
                                 }
-                            }).map(|res| match res {
-                                Ok(res) => res,
-                                Err(e) => Err(io::Error::new(io::ErrorKind::Other, e.to_string())),
-                            });
+                                Ok(()) => {
+                                    rsp_rx.await
+                                        .map(move |value| Frame { id, value })
+                                        .map_err(|_| {
+                                            io::Error::new(io::ErrorKind::ConnectionAborted, "Server dropped response")
+                                        })
+                                }
+                            }
+                        }).map(|res| match res {
+                            Ok(res) => res,
+                            Err(e) => Err(io::Error::new(io::ErrorKind::Other, e.to_string())),
+                        });
 
-                            pending.push(fut.map_err(|e| {
-                                io::Error::new(
-                                    io::ErrorKind::ConnectionAborted,
-                                    e.to_string(),
-                                )
-                            }));
-                        }
-                    },
+                        pending.push(fut.map_err(|e| {
+                            io::Error::new(
+                                io::ErrorKind::ConnectionAborted,
+                                e.to_string(),
+                            )
+                        }));
+                    }
+                },
 
-                    res = pending.next() => match res {
-                        None => {},
-                        Some(Ok(rsp)) => {
-                            write.send(rsp).await?;
-                        }
-                        Some(Err(error)) => {
-                            error!(?error, "Runtime failure");
-                            return Ok(());
-                        }
+                res = pending.next() => match res {
+                    None => {},
+                    Some(Ok(rsp)) => {
+                        write.send(rsp).await?;
+                    }
+                    Some(Err(error)) => {
+                        error!(?error, "Runtime failure");
+                        return Ok(());
                     }
                 }
             }
-        });
+        }
+    });
 
-        rx
-    }
+    rx
 }
 
 // === impl FramedDecode ===
@@ -247,16 +231,17 @@ mod tests {
         enc.encode(mux1.clone(), &mut buf).expect("must encode");
 
         let mut dec = FramedDecode::<LengthDelimitedCodec>::default();
+        let d0 = dec
+            .decode(&mut buf)
+            .expect("must decode")
+            .expect("must decode");
         let d1 = dec
             .decode(&mut buf)
             .expect("must decode")
             .expect("must decode");
-        let d2 = dec
-            .decode(&mut buf)
-            .expect("must decode")
-            .expect("must decode");
-        assert_eq!(d1.id, mux0.id);
-        assert_eq!(d1.value.freeze(), mux0.value);
-        assert_eq!(d2.value.freeze(), mux1.value);
+        assert_eq!(d0.id, mux0.id);
+        assert_eq!(d0.value.freeze(), mux0.value);
+        assert_eq!(d1.id, mux1.id);
+        assert_eq!(d1.value.freeze(), mux1.value);
     }
 }
