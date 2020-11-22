@@ -3,6 +3,7 @@
 mod replier;
 
 use self::replier::Replier;
+use futures::future;
 use ort_grpc::server as grpc;
 use ort_http::server as http;
 use ort_tcp::server as tcp;
@@ -34,7 +35,7 @@ impl Cmd {
 
         tokio::spawn(grpc::Server::new(replier.clone()).serve(self.grpc_addr));
         tokio::spawn(http::Server::new(replier.clone()).serve(self.http_addr));
-        tokio::spawn(tcp::Server::new(replier).serve(self.tcp_addr));
+        tokio::spawn(tcp::Server::new(replier).serve(self.tcp_addr, future::pending()));
 
         let mut term = signal(SignalKind::terminate())?;
         tokio::select! {

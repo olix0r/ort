@@ -815,6 +815,7 @@ version = "0.1.9"
 dependencies = [
  "async-trait",
  "bytes",
+ "futures",
  "ort-core",
  "ort-grpc",
  "ort-http",

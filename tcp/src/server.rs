@@ -1,8 +1,9 @@
 use crate::{muxer, preface, ReplyCodec, SpecCodec};
-use futures::{prelude::*, stream::FuturesUnordered};
+use futures::{future, prelude::*, stream::FuturesUnordered};
 use ort_core::{Error, Ort};
-use std::net::SocketAddr;
+use std::{future::Future, net::SocketAddr};
 use tokio_util::codec::{FramedRead, FramedWrite};
+use tracing::error;
 
 pub struct Server<O> {
     inner: O,
@@ -17,57 +18,83 @@ impl<O: Ort> Server<O> {
         }
     }
 
-    pub async fn serve(self, addr: SocketAddr) -> Result<(), Error> {
+    pub async fn serve<C>(self, addr: SocketAddr, mut closed: C) -> Result<(), Error>
+    where
+        C: Future<Output = ()> + Unpin,
+    {
+        let mut serving = FuturesUnordered::new();
         let mut lis = tokio::net::TcpListener::bind(addr).await?;
+
         loop {
-            let (sock, _addr) = lis.accept().await?;
-            let decode = preface::Codec::from(muxer::FramedDecode::from(SpecCodec::default()));
-            let encode = muxer::FramedEncode::from(ReplyCodec::default());
-            let (rio, wio) = sock.into_split();
-            let mut rx = muxer::spawn_server(
-                FramedRead::new(rio, decode),
-                FramedWrite::new(wio, encode),
-                self.max_in_flight,
-            );
+            tokio::select! {
+                _ = serving.next() => {}
 
-            let srv = self.inner.clone();
-            let max_in_flight = self.max_in_flight;
-            tokio::spawn(async move {
-                let mut in_flight = FuturesUnordered::new();
-                loop {
-                    if in_flight.len() == max_in_flight {
-                        in_flight.try_next().await?;
-                    }
+                _ = (&mut closed) => break,
 
-                    tokio::select! {
-                         res = in_flight.try_next() => {
-                             if let Err(e) = res {
-                                 return Err(e);
-                             }
-                         }
-                         next = rx.next() => match next {
-                             None => break,
-                             Some((spec, tx)) => {
-                                 let mut srv = srv.clone();
-                                 let h = tokio::spawn(async move {
-                                     let reply = srv.ort(spec).await?;
-                                     let _ = tx.send(reply);
-                                     Ok::<(), Error>(())
-                                 });
-                                 in_flight.push(h.map(|res| match res {
-                                     Ok(Ok(())) => Ok(()),
-                                     Ok(Err(e)) => Err(e),
-                                     Err(e) => Err(e.into()),
-                                 }));
-                             }
-                         }
-                    }
+                acc = lis.accept() => {
+                    let (rio, wio) = match acc {
+                        Ok((sock, _addr)) => sock.into_split(),
+                        Err(error) => {
+                            error!(%error, "Failed to accept connectoin");
+                            continue;
+                        }
+                    };
+
+                    let decode = preface::Codec::from(muxer::FramedDecode::from(SpecCodec::default()));
+                    let encode = muxer::FramedEncode::from(ReplyCodec::default());
+                    let (mut rx, muxer) = muxer::spawn_server(
+                        FramedRead::new(rio, decode),
+                        FramedWrite::new(wio, encode),
+                        future::pending(),
+                        self.max_in_flight,
+                    );
+
+                    let srv = self.inner.clone();
+                    let max_in_flight = self.max_in_flight;
+
+                    let server = tokio::spawn(async move {
+                        let mut in_flight = FuturesUnordered::new();
+                        loop {
+                            if in_flight.len() == max_in_flight {
+                                in_flight.next().await;
+                            }
+
+                            tokio::select! {
+                                _ = in_flight.next() => {}
+
+                                next = rx.next() => match next {
+                                    None => break,
+                                    Some((spec, tx)) => {
+                                        let mut srv = srv.clone();
+                                        let h = tokio::spawn(async move {
+                                            let reply = srv.ort(spec).await?;
+                                            let _ = tx.send(reply);
+                                            Ok::<(), Error>(())
+                                        });
+                                        in_flight.push(h.map(|res| match res {
+                                            Ok(Ok(())) => {},
+                                            Ok(Err(error)) => error!(%error, "Service failed"),
+                                            Err(error) => error!(%error, "Task failed"),
+                                        }));
+                                    }
+                                }
+                            }
+                        }
+
+                        while let Some(()) = in_flight.next().await {}
+                    });
+
+                    serving.push(async move {
+                        let (m, r) = tokio::join!(muxer, server);
+                        let () = r?;
+                        m
+                    })
                 }
-
-                while let Some(()) = in_flight.try_next().await? {}
-
-                Ok(())
-            });
+            }
         }
+
+        while let Some(_) = serving.next().await {}
+
+        Ok(())
     }
 }

@@ -1,12 +1,11 @@
 use bytes::{Buf, BufMut, BytesMut};
 use futures::{prelude::*, stream::FuturesUnordered};
-use std::collections::HashMap;
+use std::{collections::HashMap, future::Future};
 use tokio::{
     io,
     sync::{mpsc, oneshot},
 };
 use tokio_util::codec::{Decoder, Encoder, FramedRead, FramedWrite};
-use tracing::error;
 
 #[derive(Default, Debug)]
 pub struct Muxer<E, D> {
@@ -66,11 +65,15 @@ where
     tx
 }
 
-pub fn spawn_server<Req, Rsp, D, R, E, W>(
+pub fn spawn_server<Req, Rsp, D, R, E, W, C>(
     mut read: FramedRead<R, D>,
     mut write: FramedWrite<W, E>,
+    mut closed: C,
     max_in_flight: usize,
-) -> mpsc::Receiver<(Req, oneshot::Sender<Rsp>)>
+) -> (
+    mpsc::Receiver<(Req, oneshot::Sender<Rsp>)>,
+    tokio::task::JoinHandle<io::Result<()>>,
+)
 where
     Req: Send + 'static,
     Rsp: Send + 'static,
@@ -78,64 +81,72 @@ where
     D: Decoder<Item = Frame<Req>, Error = io::Error> + Send + 'static,
     R: io::AsyncRead + Send + Unpin + 'static,
     W: io::AsyncWrite + Send + Unpin + 'static,
+    C: Future<Output = ()> + Send + Unpin + 'static,
 {
     let (tx, rx) = mpsc::channel(max_in_flight);
 
-    tokio::spawn(async move {
+    let handle = tokio::spawn(async move {
         let mut pending = FuturesUnordered::new();
-
         loop {
-            tokio::select! {
-                r = read.try_next() => {
-                    let msg = match r {
-                        Ok(res) => res,
-                        Err(e) => return Err(e),
-                    };
-                    if let Some(Frame { id, value }) = msg {
-                        let mut tx = tx.clone();
-                        let fut = tokio::spawn(async move {
-                            let (rsp_tx, rsp_rx) = oneshot::channel();
-                            match tx.send((value, rsp_tx)).await {
-                                Err(_) => {
-                                    Err(io::Error::new(io::ErrorKind::ConnectionAborted, "Server disconnected"))
-                                }
-                                Ok(()) => {
-                                    rsp_rx.await
-                                        .map(move |value| Frame { id, value })
-                                        .map_err(|_| {
-                                            io::Error::new(io::ErrorKind::ConnectionAborted, "Server dropped response")
-                                        })
-                                }
-                            }
-                        }).map(|res| match res {
-                            Ok(res) => res,
-                            Err(e) => Err(io::Error::new(io::ErrorKind::Other, e.to_string())),
-                        });
+            while pending.len() == max_in_flight {
+                if let Some(rsp) = pending.try_next().await? {
+                    write.send(rsp).await?;
+                }
+            }
 
-                        pending.push(fut.map_err(|e| {
-                            io::Error::new(
-                                io::ErrorKind::ConnectionAborted,
-                                e.to_string(),
-                            )
-                        }));
-                    }
+            tokio::select! {
+                _ = (&mut closed) => break,
+
+                r = read.try_next() => {
+                    let Frame { id, value } = match r? {
+                        Some(f) => f,
+                        None => break,
+                    };
+
+                    let mut tx = tx.clone();
+                    let p = tokio::spawn(async move {
+                        let (rsp_tx, rsp_rx) = oneshot::channel();
+                        match tx.send((value, rsp_tx)).await {
+                            Err(_) => {
+                                Err(io::Error::new(io::ErrorKind::ConnectionAborted, "Server disconnected"))
+                            }
+                            Ok(()) => {
+                                rsp_rx.await
+                                    .map(move |value| Frame { id, value })
+                                    .map_err(|_| {
+                                        io::Error::new(io::ErrorKind::ConnectionAborted, "Server dropped response")
+                                    })
+                            }
+                        }
+                    }).map(|res| match res {
+                        Ok(res) => res,
+                        Err(e) => Err(io::Error::new(io::ErrorKind::Other, e.to_string())),
+                    });
+
+                    pending.push(p.map_err(|e| {
+                        io::Error::new(
+                            io::ErrorKind::ConnectionAborted,
+                            e.to_string(),
+                        )
+                    }));
                 },
 
-                res = pending.next() => match res {
-                    None => {},
-                    Some(Ok(rsp)) => {
+                res = pending.try_next() => {
+                    if let Some(rsp) = res? {
                         write.send(rsp).await?;
-                    }
-                    Some(Err(error)) => {
-                        error!(?error, "Runtime failure");
-                        return Ok(());
                     }
                 }
             }
         }
+
+        while let Some(rsp) = pending.try_next().await? {
+            write.send(rsp).await?;
+        }
+
+        Ok(())
     });
 
-    rx
+    (rx, handle)
 }
 
 // === impl FramedDecode ===
