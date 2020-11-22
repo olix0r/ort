@@ -1,4 +1,4 @@
-use crate::{Muxish, MuxishCodec, ReplyCodec, SpecCodec, PREFIX, PREFIX_LEN};
+use crate::{muxer, ReplyCodec, SpecCodec, PREFIX, PREFIX_LEN};
 use futures::{prelude::*, stream::FuturesUnordered};
 use ort_core::{Error, Ort};
 use std::net::SocketAddr;
@@ -34,20 +34,21 @@ impl<O: Ort> Server<O> {
                     ));
                 }
 
-                let mut read = FramedRead::new(sock_rx, MuxishCodec::from(SpecCodec::default()));
-                let mut write = FramedWrite::new(sock_tx, MuxishCodec::from(ReplyCodec::default()));
+                let mut read = FramedRead::new(sock_rx, muxer::Codec::from(SpecCodec::default()));
+                let mut write =
+                    FramedWrite::new(sock_tx, muxer::Codec::from(ReplyCodec::default()));
 
                 let mut pending = FuturesUnordered::new();
 
                 loop {
                     tokio::select! {
                         msg = read.try_next() => {
-                            if let Some(Muxish { id, value: spec }) = msg? {
+                            if let Some(muxer::Frame { id, value: spec }) = msg? {
                                 let mut srv = srv.clone();
                                 let fut = tokio::spawn(async move {
                                     srv.ort(spec)
                                         .await
-                                        .map(move |value| Muxish { id, value })
+                                        .map(move |value| muxer::Frame { id, value })
                                         .map_err(|e| {
                                             io::Error::new(
                                                 io::ErrorKind::InvalidData,

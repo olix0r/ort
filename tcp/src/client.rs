@@ -1,4 +1,4 @@
-use crate::{Muxish, MuxishCodec, ReplyCodec, SpecCodec, PREFIX};
+use crate::{muxer, ReplyCodec, SpecCodec, PREFIX};
 use futures::prelude::*;
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
 use std::sync::Arc;
@@ -17,8 +17,8 @@ pub struct Tcp(Arc<Mutex<Inner>>);
 
 struct Inner {
     next_id: u64,
-    write: FramedWrite<tcp::OwnedWriteHalf, MuxishCodec<SpecCodec>>,
-    read: FramedRead<tcp::OwnedReadHalf, MuxishCodec<ReplyCodec>>,
+    write: FramedWrite<tcp::OwnedWriteHalf, muxer::Codec<SpecCodec>>,
+    read: FramedRead<tcp::OwnedReadHalf, muxer::Codec<ReplyCodec>>,
 }
 
 impl MakeTcp {
@@ -59,12 +59,12 @@ impl Ort for Tcp {
         let id = *next_id;
         *next_id += 1;
 
-        write.send(Muxish { id, value: spec }).await?;
+        write.send(muxer::Frame { id, value: spec }).await?;
 
         read.try_next()
             .await?
             .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotConnected).into())
-            .map(|Muxish { value, .. }| value)
+            .map(|muxer::Frame { value, .. }| value)
     }
 }
 

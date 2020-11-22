@@ -1,6 +1,7 @@
 #![deny(warnings, rust_2018_idioms)]
 
 pub mod client;
+pub mod muxer;
 pub mod server;
 
 use bytes::{Buf, BufMut, BytesMut};
@@ -11,91 +12,10 @@ use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 const PREFIX_LEN: usize = 23;
 static PREFIX: &[u8] = b"ort.olix0r.net/load\r\n\r\n";
 
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
-struct Muxish<T> {
-    id: u64,
-
-    value: T,
-}
-
-struct MuxishCodec<C> {
-    codec: C,
-    state: MuxishState,
-}
-
-enum MuxishState {
-    Init,
-    Head { id: u64 },
-}
-
 #[derive(Default)]
 struct SpecCodec(());
 
 struct ReplyCodec(LengthDelimitedCodec);
-
-// === impl MuxishCodec ===
-
-impl<C> From<C> for MuxishCodec<C> {
-    fn from(codec: C) -> Self {
-        Self {
-            codec,
-            state: MuxishState::Init,
-        }
-    }
-}
-
-impl<C: Default> Default for MuxishCodec<C> {
-    fn default() -> Self {
-        Self {
-            codec: C::default(),
-            state: MuxishState::Init,
-        }
-    }
-}
-
-impl<C: Decoder> Decoder for MuxishCodec<C> {
-    type Item = Muxish<C::Item>;
-    type Error = C::Error;
-
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Muxish<C::Item>>, C::Error> {
-        let id = match self.state {
-            MuxishState::Init => {
-                if src.len() < 8 {
-                    return Ok(None);
-                }
-                src.get_u64()
-            }
-            MuxishState::Head { id } => {
-                self.state = MuxishState::Init;
-                id
-            }
-        };
-
-        match self.codec.decode(src)? {
-            Some(value) => {
-                return Ok(Some(Muxish { id, value }));
-            }
-            None => {
-                self.state = MuxishState::Head { id };
-                return Ok(None);
-            }
-        }
-    }
-}
-
-impl<T, C: Encoder<T>> Encoder<Muxish<T>> for MuxishCodec<C> {
-    type Error = C::Error;
-
-    fn encode(
-        &mut self,
-        Muxish { id, value }: Muxish<T>,
-        dst: &mut BytesMut,
-    ) -> Result<(), C::Error> {
-        dst.reserve(8);
-        dst.put_u64(id);
-        self.codec.encode(value, dst)
-    }
-}
 
 // === impl SpecCodec ===
 
@@ -167,37 +87,6 @@ impl Encoder<Reply> for ReplyCodec {
 mod tests {
     use super::*;
     use bytes::Bytes;
-
-    #[tokio::test]
-    async fn roundtrip_mux() {
-        let mux0 = Muxish {
-            id: 1,
-            value: Bytes::from_static(b"abcde"),
-        };
-        let mux1 = Muxish {
-            id: 1,
-            value: Bytes::from_static(b"fghij"),
-        };
-
-        let mut buf = BytesMut::with_capacity(100);
-
-        let mut enc = MuxishCodec::<LengthDelimitedCodec>::default();
-        enc.encode(mux0.clone(), &mut buf).expect("must encode");
-        enc.encode(mux1.clone(), &mut buf).expect("must encode");
-
-        let mut dec = MuxishCodec::<LengthDelimitedCodec>::default();
-        let d1 = dec
-            .decode(&mut buf)
-            .expect("must decode")
-            .expect("must decode");
-        let d2 = dec
-            .decode(&mut buf)
-            .expect("must decode")
-            .expect("must decode");
-        assert_eq!(d1.id, mux0.id);
-        assert_eq!(d1.value.freeze(), mux0.value);
-        assert_eq!(d2.value.freeze(), mux1.value);
-    }
 
     #[tokio::test]
     async fn roundtrip_spec() {
