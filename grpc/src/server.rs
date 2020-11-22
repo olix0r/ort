@@ -31,7 +31,7 @@ impl<O: Ort + Sync> ort_server::Ort for Server<O> {
         let ResponseSpec {
             latency,
             result,
-            data,
+            data: _,
         } = req.into_inner();
 
         let latency = latency.and_then(|l| l.try_into().ok()).unwrap_or_default();
@@ -66,7 +66,6 @@ impl<O: Ort + Sync> ort_server::Ort for Server<O> {
         let spec = Spec {
             latency,
             response_size,
-            data: data.into(),
         };
         let mut inner = self.inner.clone();
         inner

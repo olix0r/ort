@@ -9,10 +9,8 @@ publish = false
 async-trait = "0.1"
 bytes = "0.5"
 futures = "0.3"
-ort-core = { path = "../core", features = ["deser"] }
+ort-core = { path = "../core" }
 rand = { version = "0.7", features = ["small_rng"] }
-serde = "1.0"
-serde_json = "1.0"
 tokio = { version = "0.2", features = ["io-util", "macros", "net", "signal", "sync", "time"] }
 tokio-util = { version = "0.3.1", features = ["codec"] }
 tracing = "0.1"

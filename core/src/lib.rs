@@ -20,15 +20,14 @@ pub trait Ort: Clone + Send + 'static {
 
 pub type Error = Box<dyn std::error::Error + Send + Sync + 'static>;
 
-#[derive(Clone, Debug, Default)]
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "deser", derive(serde::Serialize, serde::Deserialize))]
 pub struct Spec {
     pub latency: Duration,
     pub response_size: usize,
-    pub data: Bytes,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "deser", derive(serde::Serialize, serde::Deserialize))]
 pub struct Reply {
     pub data: Bytes,

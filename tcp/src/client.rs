@@ -33,11 +33,11 @@ impl MakeOrt<String> for MakeTcp {
     async fn make_ort(&mut self, target: String) -> Result<Tcp, Error> {
         let mut stream = TcpStream::connect(target).await?;
         stream.set_nodelay(true)?;
-        stream.write(PREFIX.as_bytes()).await?;
+        stream.write(PREFIX).await?;
         let (read, write) = stream.into_split();
         Ok(Tcp(Arc::new(Mutex::new(Inner {
-            write: FramedWrite::new(write, SpecCodec::default()),
-            read: FramedRead::new(read, ReplyCodec::default()),
+            write: FramedWrite::new(write, Default::default()),
+            read: FramedRead::new(read, Default::default()),
         }))))
     }
 }

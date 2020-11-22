@@ -30,7 +30,6 @@ impl Ort for Grpc {
         Spec {
             latency,
             response_size,
-            data,
         }: Spec,
     ) -> Result<Reply, Error> {
         let req = ResponseSpec {
@@ -38,7 +37,7 @@ impl Ort for Grpc {
             result: Some(spec::Result::Success(spec::Success {
                 size: response_size as i64,
             })),
-            data: data.into_iter().collect(),
+            ..ResponseSpec::default()
         };
 
         let rsp = self.0.get(req).await?.into_inner();

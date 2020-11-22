@@ -48,7 +48,6 @@ impl Ort for Http {
         Spec {
             latency,
             response_size,
-            data: _,
         }: Spec,
     ) -> Result<Reply, Error> {
         let mut uri = http::Uri::builder();

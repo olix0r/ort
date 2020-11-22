@@ -32,8 +32,8 @@ impl<O: Ort> Server<O> {
                     }
                 };
 
-                if prefix != PREFIX.as_bytes() {
-                    info!(?prefix, expected = ?PREFIX.as_bytes(), "Client isn't speaking our language");
+                if prefix != PREFIX {
+                    info!(?prefix, expected = ?PREFIX, "Client isn't speaking our language");
                     return;
                 }
 

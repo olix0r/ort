@@ -835,8 +835,6 @@ dependencies = [
  "futures",
  "ort-core",
  "rand",
- "serde",
- "serde_json",
  "tokio",
  "tokio-util",
  "tracing",
