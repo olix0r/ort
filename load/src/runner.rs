@@ -77,8 +77,8 @@ impl<L: Acquire> Runner<L> {
             mut rng,
         } = self;
 
+        debug!(?total_requests.limit, %target, "Initializing new client");
         let client = connect.make_ort(target.clone()).await?;
-        debug!(?total_requests.limit, "Sending requests");
         loop {
             let n = match total_requests.advance() {
                 Ok(n) => n,

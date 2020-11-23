@@ -565,6 +565,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2448f6066e80e3bfc792e9c98bf705b4b0fc6e8ef5b43e5889aff0eaa9c58743"
 
 [[package]]
+name = "linkerd2-drain"
+version = "0.1.0"
+source = "git+https://github.com/linkerd/linkerd2-proxy?branch=main#04431a3794a39db6fea6270fa4dea1376c4a034a"
+dependencies = [
+ "futures",
+ "linkerd2-error",
+ "pin-project 0.4.27",
+ "tokio",
+]
+
+[[package]]
+name = "linkerd2-error"
+version = "0.1.0"
+source = "git+https://github.com/linkerd/linkerd2-proxy?branch=main#04431a3794a39db6fea6270fa4dea1376c4a034a"
+dependencies = [
+ "futures",
+]
+
+[[package]]
 name = "lock_api"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -752,6 +771,7 @@ dependencies = [
  "bytes",
  "serde",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -816,6 +836,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "futures",
+ "linkerd2-drain",
  "ort-core",
  "ort-grpc",
  "ort-http",
@@ -834,11 +855,13 @@ dependencies = [
  "async-trait",
  "bytes",
  "futures",
+ "linkerd2-drain",
  "ort-core",
  "rand",
  "tokio",
  "tokio-util",
  "tracing",
+ "tracing-futures",
 ]
 
 [[package]]

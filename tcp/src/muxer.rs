@@ -1,11 +1,15 @@
+use crate::next_or_pending;
 use bytes::{Buf, BufMut, BytesMut};
 use futures::{prelude::*, stream::FuturesUnordered};
-use std::{collections::HashMap, future::Future};
+use linkerd2_drain::Watch as Drain;
+use std::collections::HashMap;
 use tokio::{
     io,
     sync::{mpsc, oneshot},
 };
 use tokio_util::codec::{Decoder, Encoder, FramedRead, FramedWrite};
+use tracing::{debug, debug_span, error, info, trace};
+use tracing_futures::Instrument;
 
 #[derive(Default, Debug)]
 pub struct Muxer<E, D> {
@@ -58,6 +62,7 @@ where
 
         loop {
             if next_id == std::u64::MAX {
+                info!("Client exhausted request IDs");
                 break;
             }
 
@@ -68,16 +73,20 @@ where
                     Some((value, rsp_tx)) => {
                         let id = next_id;
                         next_id += 1;
-                        if let Err(e) = write.send(Frame { id, value }).await {
-                            return Err(e);
+                        trace!(id, "Dispatching request");
+                        let f = in_flight.entry(id);
+                        if let std::collections::hash_map::Entry::Occupied(_) = f {
+                            error!(id, "Request ID already in-flight");
+                            return Err(io::Error::new(io::ErrorKind::InvalidInput, "Request ID is already in-flight"));
                         }
-                        in_flight.insert(id, rsp_tx);
+                        if let Err(error) = write.send(Frame { id, value }).await {
+                            error!(id, %error, "Failed to write response");
+                            return Err(error);
+                        }
+                        f.or_insert(rsp_tx);
                     }
-
                     None => {
-                        // We shan't be sending any more requests. Keep reading
-                        // responses, though.
-                        drop(write);
+                        debug!("Client dropped its send handle");
                         break;
                     }
                 },
@@ -86,11 +95,13 @@ where
                 // client.
                 rsp = read.try_next() => match rsp? {
                     Some(Frame { id, value }) => {
+                        trace!(id, "Dispatching response");
                         match in_flight.remove(&id) {
                             Some(tx) => {
                                 let _ = tx.send(value);
                             }
                             None => {
+                                error!("Received response for unknown request");
                                 return Err(io::Error::new(
                                     io::ErrorKind::InvalidInput,
                                     "Response for unknown request",
@@ -98,10 +109,24 @@ where
                             }
                         }
                     }
-                    None => return Ok(()),
+                    None => {
+                        debug!(in_flight=in_flight.len(), "Server closed");
+                        if in_flight.len() == 0 {
+                            return Ok(());
+                        } else {
+                            error!("Server closed while responses are pending");
+                            return Err(io::Error::new(io::ErrorKind::ConnectionReset, "Server closed"));
+                        }
+                    }
                 },
             }
         }
+
+        debug!("Allowing pending responses to complete");
+
+        // We shan't be sending any more requests. Keep reading
+        // responses, though.
+        drop((req_rx, write));
 
         // Satisfy remaining responses.
         while let Some(Frame { id, value }) = read.try_next().await? {
@@ -113,7 +138,7 @@ where
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
                         "Response for unknown request",
-                    ))
+                    ));
                 }
             }
         }
@@ -125,15 +150,15 @@ where
         }
 
         Ok(())
-    });
+    }.in_current_span());
 
     req_tx
 }
 
-pub fn spawn_server<Req, Rsp, D, R, E, W, C>(
+pub fn spawn_server<Req, Rsp, D, R, E, W>(
     mut read: FramedRead<R, D>,
     mut write: FramedWrite<W, E>,
-    mut closed: C,
+    drain: Drain,
     buffer_capacity: usize,
 ) -> (
     mpsc::Receiver<(Req, oneshot::Sender<Rsp>)>,
@@ -146,64 +171,93 @@ where
     D: Decoder<Item = Frame<Req>, Error = io::Error> + Send + 'static,
     R: io::AsyncRead + Send + Unpin + 'static,
     W: io::AsyncWrite + Send + Unpin + 'static,
-    C: Future<Output = ()> + Send + Unpin + 'static,
 {
-    let (tx, rx) = mpsc::channel(buffer_capacity);
+    let (mut tx, rx) = mpsc::channel(buffer_capacity);
+
+    let drain = drain.clone();
 
     let handle = tokio::spawn(async move {
+        tokio::pin! {
+            let closed = drain.signal();
+        }
+
+        let mut last_id = 0u64;
         let mut pending = FuturesUnordered::new();
         loop {
             tokio::select! {
-                _ = (&mut closed) => break,
+                shutdown = (&mut closed) => {
+                    debug!("Shutdown signaled; draining pending requests");
+                    drop(read);
+                    drop(tx);
+                    while let Some(Frame { id, value }) = pending.try_next().await? {
+                        trace!(id, "Pending response completed");
+                        write.send(Frame { id, value }).await?;
+                    }
+                    debug!("Pending requests completed");
+                    drop(shutdown);
+                    return Ok(());
+                }
 
-                res = pending.try_next() => {
-                    if let Some(rsp) = res? {
-                        write.send(rsp).await?;
+                msg = next_or_pending(&mut pending) => {
+                    let Frame { id, value } = match msg {
+                        Ok(f) => f,
+                        Err(error) => {
+                            error!(%error, "Response failed");
+                            return Err(error);
+                        }
+                    };
+                    trace!(id, "Pending response completed");
+                    if let Err(error) = write.send(Frame { id, value }).await {
+                        error!(%error, "Write failed");
+                        return Err(error);
                     }
                 }
 
-                r = read.try_next() => {
-                    let Frame { id, value } = match r? {
-                        Some(f) => f,
-                        None => break,
+                r = read.next() => {
+                    let Frame { id, value } = match r {
+                        Some(Ok(f)) => f,
+                        Some(Err(error)) => {
+                            error!(%error, "Read error");
+                            return Err(error);
+                        }
+                        None => {
+                            trace!("Draining in-flight responses after client stream completed.");
+                            while let Some(Frame { id, value }) = pending.try_next().await? {
+                                trace!(id, "Pending response completed");
+                                write.send(Frame { id, value }).await?;
+                            }
+                            return Ok(());
+                        }
                     };
 
-                    let mut tx = tx.clone();
-                    let p = tokio::spawn(async move {
-                        let (rsp_tx, rsp_rx) = oneshot::channel();
-                        match tx.send((value, rsp_tx)).await {
-                            Err(_) => {
-                                Err(io::Error::new(io::ErrorKind::ConnectionAborted, "Server disconnected"))
-                            }
-                            Ok(()) => {
-                                rsp_rx.await
-                                    .map(move |value| Frame { id, value })
-                                    .map_err(|_| {
-                                        io::Error::new(io::ErrorKind::ConnectionAborted, "Server dropped response")
-                                    })
-                            }
-                        }
-                    }).map(|res| match res {
-                        Ok(res) => res,
-                        Err(e) => Err(io::Error::new(io::ErrorKind::Other, e.to_string())),
-                    });
+                    if id <= last_id {
+                        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Request ID too low"));
+                    }
+                    last_id = id;
 
-                    pending.push(p.map_err(|e| {
-                        io::Error::new(
-                            io::ErrorKind::ConnectionAborted,
-                            e.to_string(),
-                        )
+                    trace!(id, "Dispatching request");
+                    let (rsp_tx, rsp_rx) = oneshot::channel();
+                    if tx.send((value, rsp_tx)).await.is_err() {
+                        error!("Lost service");
+                        return Err(io::Error::new(io::ErrorKind::ConnectionAborted, "Lost service"));
+                    }
+                    pending.push(rsp_rx.map(move |v| match v {
+                        Ok(value) => {
+                            trace!(id, "Response completed");
+                            Ok(Frame { id, value })
+                        }
+                        Err(_) => {
+                            error!("Server dropped response");
+                            Err(io::Error::new(
+                                io::ErrorKind::ConnectionAborted,
+                                "Server dropped response",
+                            ))
+                        }
                     }));
                 }
             }
         }
-
-        while let Some(rsp) = pending.try_next().await? {
-            write.send(rsp).await?;
-        }
-
-        Ok(())
-    });
+    }.instrument(debug_span!("mux")));
 
     (rx, handle)
 }

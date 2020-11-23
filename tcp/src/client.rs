@@ -6,6 +6,7 @@ use tokio::{
     sync::{mpsc, oneshot},
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
+use tracing::{debug, debug_span};
 
 #[derive(Clone)]
 pub struct MakeTcp {
@@ -28,16 +29,20 @@ impl MakeOrt<String> for MakeTcp {
     type Ort = Tcp;
 
     async fn make_ort(&mut self, target: String) -> Result<Tcp, Error> {
+        debug!(%target, "Initializing a new connection");
         let stream = TcpStream::connect(target).await?;
         stream.set_nodelay(true)?;
-        let (rio, wio) = stream.into_split();
 
+        let local = stream.local_addr().expect("socket must have local addr");
+        let peer = stream.peer_addr().expect("socket must have peer addr");
+        let (rio, wio) = stream.into_split();
         let write = FramedWrite::new(
             wio,
             preface::Codec::from(muxer::FramedEncode::from(SpecCodec::default())),
         );
         let read = FramedRead::new(rio, muxer::FramedDecode::from(ReplyCodec::default()));
-        let tx = muxer::spawn_client(write, read, self.buffer_capacity);
+        let tx = debug_span!("conn", %local, %peer)
+            .in_scope(|| muxer::spawn_client(write, read, self.buffer_capacity));
 
         Ok(Tcp { tx })
     }
@@ -51,7 +56,8 @@ impl Ort for Tcp {
             .send((spec, tx))
             .await
             .map_err(|_| io::Error::new(io::ErrorKind::NotConnected, "Muxer lost"))?;
-        rx.await
-            .map_err(|_| io::Error::new(io::ErrorKind::NotConnected, "Muxer lost").into())
+        rx.await.map_err(|_| {
+            io::Error::new(io::ErrorKind::NotConnected, "Muxer dropped response").into()
+        })
     }
 }

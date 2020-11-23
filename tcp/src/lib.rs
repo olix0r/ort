@@ -23,10 +23,7 @@ impl Decoder for SpecCodec {
 
     fn decode(&mut self, src: &mut BytesMut) -> io::Result<Option<Spec>> {
         if src.len() < 4 + 4 {
-            return Err(io::Error::new(
-                io::ErrorKind::InvalidData,
-                "Message too short",
-            ));
+            return Ok(None);
         }
         let ms = src.get_u32();
         let sz = src.get_u32();
@@ -146,5 +143,13 @@ mod tests {
                 .expect("must decode"),
             reply1
         );
+    }
+}
+
+async fn next_or_pending<T, S: futures::Stream<Item = T> + Unpin>(p: &mut S) -> T {
+    use futures::StreamExt;
+    match p.next().await {
+        Some(p) => p,
+        None => futures::future::pending().await,
     }
 }

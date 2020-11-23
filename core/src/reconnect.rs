@@ -1,5 +1,6 @@
 use crate::{Error, MakeOrt, Ort, Reply, Spec};
 use tokio::time;
+use tracing::debug;
 
 #[derive(Clone)]
 pub struct MakeReconnect<M> {
@@ -71,10 +72,15 @@ where
     M: MakeOrt<T>,
 {
     async fn ort(&mut self, spec: Spec) -> Result<Reply, Error> {
+        // FIXME: This is AFU. Instances are cloned so this does not do the
+        // right thing.
         loop {
             self.inner = match self.inner.ort(spec.clone()).await {
                 Ok(reply) => return Ok(reply),
-                Err(_) => self.make.make_ort(self.target.clone()).await?.inner,
+                Err(error) => {
+                    debug!(%error, "Rebuilding client");
+                    self.make.make_ort(self.target.clone()).await?.inner
+                }
             };
         }
     }
