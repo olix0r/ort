@@ -42,24 +42,54 @@ pub fn spawn_client<Req, Rsp, W, E, R, D>(
     mut write: FramedWrite<W, E>,
     mut read: FramedRead<R, D>,
     max_in_flight: usize,
-) -> mpsc::Sender<(Req, oneshot::Receiver<Result<Rsp, D::Error>>)>
+) -> mpsc::Sender<(Req, oneshot::Sender<Rsp>)>
 where
     Req: Send + 'static,
     Rsp: Send + 'static,
-    E: Encoder<Frame<Req>> + Send + 'static,
-    D: Decoder<Item = Frame<Rsp>> + Send + 'static,
-    D::Error: Send + 'static,
-    R: io::AsyncRead + Send + 'static,
-    W: io::AsyncWrite + Send + 'static,
+    E: Encoder<Frame<Req>, Error = io::Error> + Send + 'static,
+    D: Decoder<Item = Frame<Rsp>, Error = io::Error> + Send + 'static,
+    R: io::AsyncRead + Send + Unpin + 'static,
+    W: io::AsyncWrite + Send + Unpin + 'static,
 {
     let (tx, mut rx) = mpsc::channel(max_in_flight);
 
     tokio::spawn(async move {
         let mut next_id = 1u64;
-        let mut in_flight = HashMap::<u64, oneshot::Sender<Result<D::Item, D::Error>>>::new();
+        let mut in_flight = HashMap::<u64, oneshot::Sender<Rsp>>::new();
+
         loop {
-            let _ = rx.next().await;
+            if next_id == std::u64::MAX {
+                break;
+            }
+
+            tokio::select! {
+                r = rx.next() => match r {
+                    None => break,
+                    Some((value, rsp_tx)) => {
+                        let id = next_id;
+                        next_id += 1;
+                        if let Err(e) = write.send(Frame { id, value }).await {
+                            return Err(e);
+                        }
+                        in_flight.insert(id, rsp_tx);
+                    }
+                },
+
+                rsp = read.try_next() => match rsp? {
+                    None => break,
+                    Some(Frame { id, value }) => {
+                        match in_flight.remove(&id) {
+                            None => unimplemented!(),
+                            Some(tx) => {
+                                let _ = tx.send(value);
+                            }
+                        }
+                    }
+                },
+            }
         }
+
+        Ok(())
     });
 
     tx
@@ -97,6 +127,12 @@ where
             tokio::select! {
                 _ = (&mut closed) => break,
 
+                res = pending.try_next() => {
+                    if let Some(rsp) = res? {
+                        write.send(rsp).await?;
+                    }
+                }
+
                 r = read.try_next() => {
                     let Frame { id, value } = match r? {
                         Some(f) => f,
@@ -129,12 +165,6 @@ where
                             e.to_string(),
                         )
                     }));
-                },
-
-                res = pending.try_next() => {
-                    if let Some(rsp) = res? {
-                        write.send(rsp).await?;
-                    }
                 }
             }
         }
