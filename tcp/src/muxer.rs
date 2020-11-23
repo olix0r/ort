@@ -9,7 +9,7 @@ use tokio_util::codec::{Decoder, Encoder, FramedRead, FramedWrite};
 
 #[derive(Default, Debug)]
 pub struct Muxer<E, D> {
-    max_in_flight: usize,
+    buffer_capacity: usize,
     encoder: FramedEncode<E>,
     decoder: FramedDecode<D>,
 }
@@ -37,11 +37,10 @@ enum DecodeState {
     Head { id: u64 },
 }
 
-#[allow(warnings)]
 pub fn spawn_client<Req, Rsp, W, E, R, D>(
     mut write: FramedWrite<W, E>,
     mut read: FramedRead<R, D>,
-    max_in_flight: usize,
+    buffer_capacity: usize,
 ) -> mpsc::Sender<(Req, oneshot::Sender<Rsp>)>
 where
     Req: Send + 'static,
@@ -51,7 +50,7 @@ where
     R: io::AsyncRead + Send + Unpin + 'static,
     W: io::AsyncWrite + Send + Unpin + 'static,
 {
-    let (tx, mut rx) = mpsc::channel(max_in_flight);
+    let (req_tx, mut req_rx) = mpsc::channel(buffer_capacity);
 
     tokio::spawn(async move {
         let mut next_id = 1u64;
@@ -63,8 +62,9 @@ where
             }
 
             tokio::select! {
-                r = rx.next() => match r {
-                    None => break,
+                // Read requests from the stream and write them on the socket.
+                // Stash the response oneshot for when the response is read.
+                req = req_rx.next() => match req {
                     Some((value, rsp_tx)) => {
                         let id = next_id;
                         next_id += 1;
@@ -73,33 +73,68 @@ where
                         }
                         in_flight.insert(id, rsp_tx);
                     }
+
+                    None => {
+                        // We shan't be sending any more requests. Keep reading
+                        // responses, though.
+                        drop(write);
+                        break;
+                    }
                 },
 
+                // Read responses from the socket and send them back to the
+                // client.
                 rsp = read.try_next() => match rsp? {
-                    None => break,
                     Some(Frame { id, value }) => {
                         match in_flight.remove(&id) {
-                            None => unimplemented!(),
                             Some(tx) => {
                                 let _ = tx.send(value);
                             }
+                            None => {
+                                return Err(io::Error::new(
+                                    io::ErrorKind::InvalidInput,
+                                    "Response for unknown request",
+                                ));
+                            }
                         }
                     }
+                    None => return Ok(()),
                 },
             }
+        }
+
+        // Satisfy remaining responses.
+        while let Some(Frame { id, value }) = read.try_next().await? {
+            match in_flight.remove(&id) {
+                Some(tx) => {
+                    let _ = tx.send(value);
+                }
+                None => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidInput,
+                        "Response for unknown request",
+                    ))
+                }
+            }
+        }
+        if !in_flight.is_empty() {
+            return Err(io::Error::new(
+                io::ErrorKind::ConnectionReset,
+                "Some requests did not receive a response",
+            ));
         }
 
         Ok(())
     });
 
-    tx
+    req_tx
 }
 
 pub fn spawn_server<Req, Rsp, D, R, E, W, C>(
     mut read: FramedRead<R, D>,
     mut write: FramedWrite<W, E>,
     mut closed: C,
-    max_in_flight: usize,
+    buffer_capacity: usize,
 ) -> (
     mpsc::Receiver<(Req, oneshot::Sender<Rsp>)>,
     tokio::task::JoinHandle<io::Result<()>>,
@@ -113,17 +148,11 @@ where
     W: io::AsyncWrite + Send + Unpin + 'static,
     C: Future<Output = ()> + Send + Unpin + 'static,
 {
-    let (tx, rx) = mpsc::channel(max_in_flight);
+    let (tx, rx) = mpsc::channel(buffer_capacity);
 
     let handle = tokio::spawn(async move {
         let mut pending = FuturesUnordered::new();
         loop {
-            while pending.len() == max_in_flight {
-                if let Some(rsp) = pending.try_next().await? {
-                    write.send(rsp).await?;
-                }
-            }
-
             tokio::select! {
                 _ = (&mut closed) => break,
 

@@ -1,28 +1,25 @@
 use crate::{muxer, preface, ReplyCodec, SpecCodec};
-use futures::prelude::*;
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
-use std::sync::Arc;
 use tokio::{
-    net::{tcp, TcpStream},
-    sync::Mutex,
+    io,
+    net::TcpStream,
+    sync::{mpsc, oneshot},
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 #[derive(Clone)]
-pub struct MakeTcp {}
+pub struct MakeTcp {
+    buffer_capacity: usize,
+}
 
 #[derive(Clone)]
-pub struct Tcp(Arc<Mutex<Inner>>);
-
-struct Inner {
-    next_id: u64,
-    write: FramedWrite<tcp::OwnedWriteHalf, preface::Codec<muxer::FramedEncode<SpecCodec>>>,
-    read: FramedRead<tcp::OwnedReadHalf, muxer::FramedDecode<ReplyCodec>>,
+pub struct Tcp {
+    tx: mpsc::Sender<(Spec, oneshot::Sender<Reply>)>,
 }
 
 impl MakeTcp {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(buffer_capacity: usize) -> Self {
+        Self { buffer_capacity }
     }
 }
 
@@ -33,46 +30,28 @@ impl MakeOrt<String> for MakeTcp {
     async fn make_ort(&mut self, target: String) -> Result<Tcp, Error> {
         let stream = TcpStream::connect(target).await?;
         stream.set_nodelay(true)?;
-        let (read, write) = stream.into_split();
-        Ok(Tcp(Arc::new(Mutex::new(Inner {
-            next_id: 1,
-            write: FramedWrite::new(write, Default::default()),
-            read: FramedRead::new(read, Default::default()),
-        }))))
+        let (rio, wio) = stream.into_split();
+
+        let write = FramedWrite::new(
+            wio,
+            preface::Codec::from(muxer::FramedEncode::from(SpecCodec::default())),
+        );
+        let read = FramedRead::new(rio, muxer::FramedDecode::from(ReplyCodec::default()));
+        let tx = muxer::spawn_client(write, read, self.buffer_capacity);
+
+        Ok(Tcp { tx })
     }
 }
 
 #[async_trait::async_trait]
 impl Ort for Tcp {
     async fn ort(&mut self, spec: Spec) -> Result<Reply, Error> {
-        let Inner {
-            ref mut next_id,
-            ref mut read,
-            ref mut write,
-        } = *self.0.lock().await;
-
-        if *next_id == std::u64::MAX {
-            return Err(Exhausted(()).into());
-        }
-        let id = *next_id;
-        *next_id += 1;
-
-        write.send(muxer::Frame { id, value: spec }).await?;
-
-        read.try_next()
-            .await?
-            .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotConnected).into())
-            .map(|muxer::Frame { value, .. }| value)
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send((spec, tx))
+            .await
+            .map_err(|_| io::Error::new(io::ErrorKind::NotConnected, "Muxer lost"))?;
+        rx.await
+            .map_err(|_| io::Error::new(io::ErrorKind::NotConnected, "Muxer lost").into())
     }
 }
-
-#[derive(Debug)]
-struct Exhausted(());
-
-impl std::fmt::Display for Exhausted {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Ran out of ids")
-    }
-}
-
-impl std::error::Error for Exhausted {}

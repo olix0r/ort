@@ -106,7 +106,7 @@ impl Cmd {
         let connect = {
             let http = MakeHttp::new(connect_timeout, http_close);
             let grpc = MakeGrpc::new();
-            let tcp = MakeTcp::new();
+            let tcp = MakeTcp::new(100_000);
             let connect = (http, grpc, tcp);
             let timeout = MakeRequestTimeout::new(connect, request_timeout);
             let metrics = MakeMetrics::new(timeout, histogram);

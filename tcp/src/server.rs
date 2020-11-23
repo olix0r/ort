@@ -7,14 +7,14 @@ use tracing::error;
 
 pub struct Server<O> {
     inner: O,
-    max_in_flight: usize,
+    buffer_capacity: usize,
 }
 
 impl<O: Ort> Server<O> {
     pub fn new(inner: O) -> Self {
         Self {
             inner,
-            max_in_flight: 100_000,
+            buffer_capacity: 100_000,
         }
     }
 
@@ -46,16 +46,16 @@ impl<O: Ort> Server<O> {
                         FramedRead::new(rio, decode),
                         FramedWrite::new(wio, encode),
                         future::pending(),
-                        self.max_in_flight,
+                        self.buffer_capacity,
                     );
 
                     let srv = self.inner.clone();
-                    let max_in_flight = self.max_in_flight;
+                    let buffer_capacity = self.buffer_capacity;
 
                     let server = tokio::spawn(async move {
                         let mut in_flight = FuturesUnordered::new();
                         loop {
-                            if in_flight.len() == max_in_flight {
+                            if in_flight.len() == buffer_capacity {
                                 in_flight.next().await;
                             }
 
