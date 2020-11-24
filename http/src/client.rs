@@ -4,7 +4,6 @@ use tokio::time::Duration;
 
 #[derive(Clone)]
 pub struct MakeHttp {
-    close: bool,
     connect_timeout: Duration,
 }
 
@@ -12,15 +11,11 @@ pub struct MakeHttp {
 pub struct Http {
     client: hyper::Client<hyper::client::HttpConnector>,
     target: http::Uri,
-    close: bool,
 }
 
 impl MakeHttp {
-    pub fn new(connect_timeout: Duration, close: bool) -> Self {
-        Self {
-            connect_timeout,
-            close,
-        }
+    pub fn new(connect_timeout: Duration) -> Self {
+        Self { connect_timeout }
     }
 }
 
@@ -36,7 +31,6 @@ impl MakeOrt<http::Uri> for MakeHttp {
         Ok(Http {
             target,
             client: hyper::Client::builder().build(connect),
-            close: self.close,
         })
     }
 }
@@ -71,23 +65,15 @@ impl Ort for Http {
             )
         };
 
-        let mut req = http::Request::builder();
-        if self.close {
-            req = req.header(http::header::CONNECTION, "close");
-        }
-
         let rsp = self
             .client
             .request(
-                req.uri(uri.build().unwrap())
+                http::Request::builder()
+                    .uri(uri.build().unwrap())
                     .body(hyper::Body::default())
                     .unwrap(),
             )
             .await?;
-
-        if !rsp.status().is_success() {
-            unimplemented!()
-        }
 
         let data = hyper::body::to_bytes(rsp.into_body()).await?;
 

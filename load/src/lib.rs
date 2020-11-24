@@ -56,9 +56,6 @@ pub struct Cmd {
     #[structopt(long)]
     requests_per_client: Option<usize>,
 
-    #[structopt(long)]
-    http_close: bool,
-
     #[structopt(long, default_value = "0")]
     response_latency: latency::Distribution,
 
@@ -85,7 +82,6 @@ impl Cmd {
             admin_addr,
             connect_timeout,
             request_timeout,
-            http_close,
             request_limit,
             request_limit_window,
             response_latency,
@@ -109,7 +105,7 @@ impl Cmd {
         );
 
         let connect = {
-            let http = MakeHttp::new(connect_timeout, http_close);
+            let http = MakeHttp::new(connect_timeout);
             let grpc = MakeGrpc::new();
             let tcp = MakeTcp::new(100_000);
             let connect = (http, grpc, tcp);
