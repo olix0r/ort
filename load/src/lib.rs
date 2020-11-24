@@ -54,6 +54,9 @@ pub struct Cmd {
     total_requests: Option<usize>,
 
     #[structopt(long)]
+    requests_per_client: Option<usize>,
+
+    #[structopt(long)]
     http_close: bool,
 
     #[structopt(long, default_value = "0")]
@@ -88,6 +91,7 @@ impl Cmd {
             response_latency,
             response_size,
             total_requests,
+            requests_per_client,
             target,
         } = self;
 
@@ -96,7 +100,8 @@ impl Cmd {
 
         let limit = RateLimit::spawn(request_limit, request_limit_window);
         let runner = Runner::new(
-            total_requests.unwrap_or(0),
+            total_requests,
+            requests_per_client,
             limit,
             Arc::new(response_latency),
             Arc::new(response_size),
