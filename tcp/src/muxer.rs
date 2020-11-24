@@ -7,7 +7,7 @@ use tokio::{
     io,
     sync::{mpsc, oneshot},
 };
-use tokio_util::codec::{Decoder, Encoder, FramedRead, FramedWrite};
+use tokio_util::codec::{Decoder, Encoder};
 use tracing::{debug, debug_span, error, info, trace};
 use tracing_futures::Instrument;
 
@@ -41,18 +41,16 @@ enum DecodeState {
     Head { id: u64 },
 }
 
-pub fn spawn_client<Req, Rsp, W, E, R, D>(
-    mut write: FramedWrite<W, E>,
-    mut read: FramedRead<R, D>,
+pub fn spawn_client<Req, Rsp, W, R>(
+    mut write: W,
+    mut read: R,
     buffer_capacity: usize,
 ) -> mpsc::Sender<(Req, oneshot::Sender<Rsp>)>
 where
     Req: Send + 'static,
     Rsp: Send + 'static,
-    E: Encoder<Frame<Req>, Error = io::Error> + Send + 'static,
-    D: Decoder<Item = Frame<Rsp>, Error = io::Error> + Send + 'static,
-    R: io::AsyncRead + Send + Unpin + 'static,
-    W: io::AsyncWrite + Send + Unpin + 'static,
+    W: Sink<Frame<Req>, Error = io::Error> + Send + Unpin + 'static,
+    R: Stream<Item = io::Result<Frame<Rsp>>> + Send + Unpin + 'static,
 {
     let (req_tx, mut req_rx) = mpsc::channel(buffer_capacity);
 
@@ -155,9 +153,9 @@ where
     req_tx
 }
 
-pub fn spawn_server<Req, Rsp, D, R, E, W>(
-    mut read: FramedRead<R, D>,
-    mut write: FramedWrite<W, E>,
+pub fn spawn_server<Req, Rsp, R, W>(
+    mut read: R,
+    mut write: W,
     drain: Drain,
     buffer_capacity: usize,
 ) -> (
@@ -167,10 +165,8 @@ pub fn spawn_server<Req, Rsp, D, R, E, W>(
 where
     Req: Send + 'static,
     Rsp: Send + 'static,
-    E: Encoder<Frame<Rsp>, Error = io::Error> + Send + 'static,
-    D: Decoder<Item = Frame<Req>, Error = io::Error> + Send + 'static,
-    R: io::AsyncRead + Send + Unpin + 'static,
-    W: io::AsyncWrite + Send + Unpin + 'static,
+    R: Stream<Item = io::Result<Frame<Req>>> + Send + Unpin + 'static,
+    W: Sink<Frame<Rsp>, Error = io::Error> + Send + Unpin + 'static,
 {
     let (mut tx, rx) = mpsc::channel(buffer_capacity);
 
