@@ -816,6 +816,7 @@ dependencies = [
  "async-trait",
  "futures",
  "hdrhistogram",
+ "http",
  "hyper",
  "indexmap",
  "ort-core",

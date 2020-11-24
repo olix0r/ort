@@ -190,22 +190,46 @@ where
 
 // === impl Target ===
 
+impl Target {
+    fn uri_default_port(
+        uri: http::Uri,
+        port: u16,
+    ) -> Result<http::Uri, Box<dyn std::error::Error + 'static>> {
+        let mut p = uri.into_parts();
+        p.authority = match p.authority {
+            Some(a) => {
+                let s = format!("{}:{}", a.host(), a.port_u16().unwrap_or(port));
+                Some(http::uri::Authority::from_str(&s)?)
+            }
+            None => return Err(InvalidTarget(http::Uri::from_parts(p)?).into()),
+        };
+        let uri = http::Uri::from_parts(p)?;
+        Ok(uri)
+    }
+}
+
 impl FromStr for Target {
     type Err = Box<dyn std::error::Error + 'static>;
 
     fn from_str(s: &str) -> Result<Target, Self::Err> {
-        let uri = hyper::Uri::from_str(s)?;
-        match uri.scheme_str() {
-            Some("grpc") | None => Ok(Target::Grpc(uri)),
-            Some("http") => Ok(Target::Http(uri)),
-            Some("tcp") => {
-                let t = match uri.authority() {
-                    Some(a) => format!("{}:{}", a.host(), a.port_u16().unwrap_or(8090)),
-                    None => return Err(InvalidTarget(uri).into()),
-                };
-                Ok(Target::Tcp(t))
+        let uri = http::Uri::from_str(s)?;
+        match uri.clone().scheme_str() {
+            Some("grpc") => {
+                let uri = Self::uri_default_port(uri, 8070)?;
+                Ok(Target::Grpc(uri))
             }
-            Some(_) => Err(InvalidTarget(uri).into()),
+            Some("http") => {
+                let uri = Self::uri_default_port(uri, 8080)?;
+                Ok(Target::Http(uri))
+            }
+            Some("tcp") => {
+                let uri = Self::uri_default_port(uri, 8090)?;
+                match uri.authority() {
+                    Some(a) => Ok(Target::Tcp(a.to_string())),
+                    None => return Err(InvalidTarget(uri).into()),
+                }
+            }
+            _ => Err(InvalidTarget(uri).into()),
         }
     }
 }
