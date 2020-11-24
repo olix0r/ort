@@ -27,9 +27,7 @@ impl<M> MakeReconnect<M> {
     }
 }
 
-impl<M> MakeReconnect<M>
-where
-{
+impl<M> MakeReconnect<M> {
     async fn make_inner<T>(&mut self, target: T) -> Result<M::Ort, Error>
     where
         T: Clone + Send + Sync + 'static,
@@ -59,7 +57,11 @@ where
 
     async fn make_ort(&mut self, target: T) -> Result<Self::Ort, Error> {
         let inner = self.make_inner(target.clone()).await?;
-        return Ok(Reconnect { target, inner: Arc::new(Mutex::new(inner)), make: self.clone(), });
+        return Ok(Reconnect {
+            target,
+            inner: Arc::new(Mutex::new(inner)),
+            make: self.clone(),
+        });
     }
 }
 
