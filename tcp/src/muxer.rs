@@ -18,7 +18,7 @@ pub struct Muxer<E, D> {
     decoder: FramedDecode<D>,
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq)]
+#[derive(Debug)]
 pub struct Frame<T> {
     pub id: u64,
     pub value: T,
@@ -54,101 +54,106 @@ where
 {
     let (req_tx, mut req_rx) = mpsc::channel(buffer_capacity);
 
-    tokio::spawn(async move {
-        let mut next_id = 1u64;
-        let mut in_flight = HashMap::<u64, oneshot::Sender<Rsp>>::new();
+    tokio::spawn(
+        async move {
+            let mut next_id = 1u64;
+            let mut in_flight = HashMap::<u64, oneshot::Sender<Rsp>>::new();
 
-        loop {
-            if next_id == std::u64::MAX {
-                info!("Client exhausted request IDs");
-                break;
-            }
+            loop {
+                if next_id == std::u64::MAX {
+                    info!("Client exhausted request IDs");
+                    break;
+                }
 
-            tokio::select! {
-                // Read requests from the stream and write them on the socket.
-                // Stash the response oneshot for when the response is read.
-                req = req_rx.next() => match req {
-                    Some((value, rsp_tx)) => {
-                        let id = next_id;
-                        next_id += 1;
-                        trace!(id, "Dispatching request");
-                        let f = in_flight.entry(id);
-                        if let std::collections::hash_map::Entry::Occupied(_) = f {
-                            error!(id, "Request ID already in-flight");
-                            return Err(io::Error::new(io::ErrorKind::InvalidInput, "Request ID is already in-flight"));
-                        }
-                        if let Err(error) = write.send(Frame { id, value }).await {
-                            error!(id, %error, "Failed to write response");
-                            return Err(error);
-                        }
-                        f.or_insert(rsp_tx);
-                    }
-                    None => {
-                        debug!("Client dropped its send handle");
-                        break;
-                    }
-                },
-
-                // Read responses from the socket and send them back to the
-                // client.
-                rsp = read.try_next() => match rsp? {
-                    Some(Frame { id, value }) => {
-                        trace!(id, "Dispatching response");
-                        match in_flight.remove(&id) {
-                            Some(tx) => {
-                                let _ = tx.send(value);
-                            }
-                            None => {
-                                error!("Received response for unknown request");
+                tokio::select! {
+                    // Read requests from the stream and write them on the socket.
+                    // Stash the response oneshot for when the response is read.
+                    req = req_rx.next() => match req {
+                        Some((value, rsp_tx)) => {
+                            let id = next_id;
+                            next_id += 1;
+                            trace!(id, "Dispatching request");
+                            let f = in_flight.entry(id);
+                            if let std::collections::hash_map::Entry::Occupied(_) = f {
+                                error!(id, "Request ID already in-flight");
                                 return Err(io::Error::new(
                                     io::ErrorKind::InvalidInput,
+                                    "Request ID is already in-flight",
+                                ));
+                            }
+                            if let Err(error) = write.send(Frame { id, value }).await {
+                                error!(id, %error, "Failed to write response");
+                                return Err(error);
+                            }
+                            f.or_insert(rsp_tx);
+                        }
+                        None => {
+                            debug!("Client dropped its send handle");
+                            break;
+                        }
+                    },
+
+                    // Read responses from the socket and send them back to the
+                    // client.
+                    rsp = read.try_next() => match rsp? {
+                        Some(Frame { id, value }) => {
+                            trace!(id, "Dispatching response");
+                            match in_flight.remove(&id) {
+                                Some(tx) => {
+                                    let _ = tx.send(value);
+                                }
+                                None => return Err(io::Error::new(
+                                    io::ErrorKind::InvalidInput,
                                     "Response for unknown request",
+                                )),
+                            }
+                        }
+                        None => {
+                            debug!(in_flight=in_flight.len(), "Server closed");
+                            if in_flight.len() == 0 {
+                                return Ok(());
+                            } else {
+                                return Err(io::Error::new(
+                                    io::ErrorKind::ConnectionReset,
+                                    "Server closed",
                                 ));
                             }
                         }
+                    },
+                }
+            }
+
+            debug!("Allowing pending responses to complete");
+
+            // We shan't be sending any more requests. Keep reading
+            // responses, though.
+            drop((req_rx, write));
+
+            // Satisfy remaining responses.
+            while let Some(Frame { id, value }) = read.try_next().await? {
+                match in_flight.remove(&id) {
+                    Some(tx) => {
+                        let _ = tx.send(value);
                     }
                     None => {
-                        debug!(in_flight=in_flight.len(), "Server closed");
-                        if in_flight.len() == 0 {
-                            return Ok(());
-                        } else {
-                            error!("Server closed while responses are pending");
-                            return Err(io::Error::new(io::ErrorKind::ConnectionReset, "Server closed"));
-                        }
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            "Response for unknown request",
+                        ));
                     }
-                },
-            }
-        }
-
-        debug!("Allowing pending responses to complete");
-
-        // We shan't be sending any more requests. Keep reading
-        // responses, though.
-        drop((req_rx, write));
-
-        // Satisfy remaining responses.
-        while let Some(Frame { id, value }) = read.try_next().await? {
-            match in_flight.remove(&id) {
-                Some(tx) => {
-                    let _ = tx.send(value);
-                }
-                None => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "Response for unknown request",
-                    ));
                 }
             }
-        }
-        if !in_flight.is_empty() {
-            return Err(io::Error::new(
-                io::ErrorKind::ConnectionReset,
-                "Some requests did not receive a response",
-            ));
-        }
+            if !in_flight.is_empty() {
+                return Err(io::Error::new(
+                    io::ErrorKind::ConnectionReset,
+                    "Some requests did not receive a response",
+                ));
+            }
 
-        Ok(())
-    }.in_current_span());
+            Ok(())
+        }
+        .in_current_span(),
+    );
 
     req_tx
 }
@@ -194,14 +199,8 @@ where
                     return Ok(());
                 }
 
-                msg = next_or_pending(&mut in_flight) => {
-                    let Frame { id, value } = match msg {
-                        Ok(f) => f,
-                        Err(error) => {
-                            error!(%error, "Response failed");
-                            return Err(error);
-                        }
-                    };
+                req = next_or_pending(&mut in_flight) => {
+                    let Frame { id, value } = req?;
                     trace!(id, "In-flight response completed");
                     if let Err(error) = write.send(Frame { id, value }).await {
                         error!(%error, "Write failed");
@@ -209,13 +208,9 @@ where
                     }
                 }
 
-                r = read.next() => {
-                    let Frame { id, value } = match r {
-                        Some(Ok(f)) => f,
-                        Some(Err(error)) => {
-                            error!(%error, "Read error");
-                            return Err(error);
-                        }
+                msg = read.try_next() => {
+                    let Frame { id, value } = match msg? {
+                        Some(f) => f,
                         None => {
                             trace!("Draining in-flight responses after client stream completed.");
                             while let Some(Frame { id, value }) = in_flight.try_next().await? {
@@ -227,28 +222,27 @@ where
                     };
 
                     if id <= last_id {
-                        return Err(io::Error::new(io::ErrorKind::InvalidInput, "Request ID too low"));
+                        return Err(io::Error::new(
+                            io::ErrorKind::InvalidInput,
+                            "Request ID too low",
+                        ));
                     }
                     last_id = id;
 
                     trace!(id, "Dispatching request");
                     let (rsp_tx, rsp_rx) = oneshot::channel();
                     if tx.send((value, rsp_tx)).await.is_err() {
-                        error!("Lost service");
-                        return Err(io::Error::new(io::ErrorKind::ConnectionAborted, "Lost service"));
+                        return Err(io::Error::new(
+                            io::ErrorKind::ConnectionAborted,
+                            "Lost service",
+                        ));
                     }
                     in_flight.push(rsp_rx.map(move |v| match v {
-                        Ok(value) => {
-                            trace!(id, "Response completed");
-                            Ok(Frame { id, value })
-                        }
-                        Err(_) => {
-                            error!("Server dropped response");
-                            Err(io::Error::new(
-                                io::ErrorKind::ConnectionAborted,
-                                "Server dropped response",
-                            ))
-                        }
+                        Ok(value) => Ok(Frame { id, value }),
+                        Err(_) => Err(io::Error::new(
+                            io::ErrorKind::ConnectionAborted,
+                            "Server dropped response",
+                        )),
                     }));
                 }
             }
