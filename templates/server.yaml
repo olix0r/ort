@@ -35,7 +35,7 @@ spec:
   service: logical
   backends:
   {{- range $i, $e := until (int .Values.server.services) }}
-    - service: logical-{{ printf "%03d" $i }}
+    - service: concrete-{{ printf "%03d" $i }}
       weight: 1
   {{- end }}
 {{- end }}
@@ -63,11 +63,16 @@ spec:
   {{-   end }}
   {{- end }}
 {{- end }}
+{{- $name := printf "server-%03d" $i }}
+{{- $srv := deepCopy $server }}
+{{- if hasKey $srv.configs $name }}
+{{-   $srv := get $srv.configs $name | mergeOverwrite $srv }}
+{{- end}}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: server-{{ printf "%03d" $i }}
+  name: {{ $name }}
   namespace: {{ $ns }}
   labels:
     app: ort
@@ -81,7 +86,7 @@ metadata:
     app: ort
     ort.olix0r.net/role: server
     ort.olix0r.net/instance: {{ quote $i }}
-  name: server-{{ printf "%03d" $i }}
+  name: {{ $name }}
   namespace: {{ $ns }}
 spec:
   selector:
@@ -99,22 +104,25 @@ spec:
       annotations:
 {{ $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
-      serviceAccount: server-{{ printf "%03d" $i }}
+      serviceAccount: {{ $name }}
       containers:
         - name: main
           image: {{ $img }}
           env:
             - name: RUST_LOG
-              value: {{ $server.log | default "info" | quote }}
+              value: {{ $srv.log | default "info" | quote }}
           {{- if eq $linkerd.inject "disabled" }}
             - name: LINKERD_DISABLED
               value: "true"
           {{- end }}
           args:
-          {{- if $server.threads }}
-            - --threads={{ $server.threads }}
+          {{- if $srv.threads }}
+            - --threads={{ $srv.threads }}
           {{- end }}
             - server
+          {{- range $f, $v := $srv.flags }}
+            - --{{ kebabcase $f }}={{ $v }}
+          {{- end }}
           ports:
           {{- range $name, $config := $protocols }}
           {{-   if $config }}

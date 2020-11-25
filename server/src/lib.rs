@@ -4,6 +4,7 @@ mod replier;
 
 use self::replier::Replier;
 use linkerd2_drain as drain;
+use ort_core::latency;
 use ort_grpc::server as grpc;
 use ort_http::server as http;
 use ort_tcp::server as tcp;
@@ -15,7 +16,7 @@ use tokio::signal::{
     unix::{signal, SignalKind},
 };
 
-#[derive(Clone, Debug, StructOpt)]
+#[derive(StructOpt)]
 #[structopt(name = "server", about = "Load target")]
 pub struct Cmd {
     #[structopt(short, long, default_value = "0.0.0.0:8070")]
@@ -24,14 +25,16 @@ pub struct Cmd {
     #[structopt(short, long, default_value = "0.0.0.0:8080")]
     http_addr: SocketAddr,
 
+    #[structopt(long, default_value = "0")]
+    response_latency: latency::Distribution,
+
     #[structopt(short, long, default_value = "0.0.0.0:8090")]
     tcp_addr: SocketAddr,
 }
 
 impl Cmd {
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let rng = SmallRng::from_entropy();
-        let replier = Replier::new(rng);
+        let replier = Replier::new(self.response_latency, SmallRng::from_entropy());
 
         let (close, closed) = drain::channel();
         tokio::spawn(grpc::Server::new(replier.clone()).serve(self.grpc_addr, closed.clone()));

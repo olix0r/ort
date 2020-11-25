@@ -23,6 +23,23 @@ pub struct InvalidPercentile(());
 
 // === impl Distribution ===
 
+impl<T> Clone for Distribution<T> {
+    fn clone(&self) -> Self {
+        Self {
+            percentiles: self.percentiles.clone(),
+            _marker: self._marker,
+        }
+    }
+}
+
+impl<T> std::fmt::Debug for Distribution<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Distribution")
+            .field("percentiles", &self.percentiles)
+            .finish()
+    }
+}
+
 impl<T: Default + Into<u64>> Default for Distribution<T> {
     fn default() -> Self {
         let mut percentiles = IndexMap::new();
