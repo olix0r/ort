@@ -1,6 +1,6 @@
 [package]
 name = "ort-load"
-version = "0.1.9"
+version = "0.1.10"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
 publish = false
@@ -19,7 +19,7 @@ ort-core = { path = "../core" }
 ort-grpc = { path = "../grpc" }
 ort-http = { path = "../http" }
 ort-tcp = { path = "../tcp" }
-parking_lot = "0.11"
+parking_lot = "0.10"
 rand = { version = "0.7", features = ["small_rng"] }
 regex = "1"
 serde = { version = "1.0", features = ["derive"] }
