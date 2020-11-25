@@ -178,23 +178,23 @@ where
         }
 
         let mut last_id = 0u64;
-        let mut pending = FuturesUnordered::new();
+        let mut in_flight = FuturesUnordered::new();
         loop {
             tokio::select! {
                 shutdown = (&mut closed) => {
-                    debug!("Shutdown signaled; draining pending requests");
+                    debug!("Shutdown signaled; draining in-flight requests");
                     drop(read);
                     drop(tx);
-                    while let Some(Frame { id, value }) = pending.try_next().await? {
-                        trace!(id, "Pending response completed");
+                    while let Some(Frame { id, value }) = in_flight.try_next().await? {
+                        trace!(id, "In-flight response completed");
                         write.send(Frame { id, value }).await?;
                     }
-                    debug!("Pending requests completed");
+                    debug!("In-flight requests completed");
                     drop(shutdown);
                     return Ok(());
                 }
 
-                msg = next_or_pending(&mut pending) => {
+                msg = next_or_pending(&mut in_flight) => {
                     let Frame { id, value } = match msg {
                         Ok(f) => f,
                         Err(error) => {
@@ -202,7 +202,7 @@ where
                             return Err(error);
                         }
                     };
-                    trace!(id, "Pending response completed");
+                    trace!(id, "In-flight response completed");
                     if let Err(error) = write.send(Frame { id, value }).await {
                         error!(%error, "Write failed");
                         return Err(error);
@@ -218,8 +218,8 @@ where
                         }
                         None => {
                             trace!("Draining in-flight responses after client stream completed.");
-                            while let Some(Frame { id, value }) = pending.try_next().await? {
-                                trace!(id, "Pending response completed");
+                            while let Some(Frame { id, value }) = in_flight.try_next().await? {
+                                trace!(id, "In-flight response completed");
                                 write.send(Frame { id, value }).await?;
                             }
                             return Ok(());
@@ -237,7 +237,7 @@ where
                         error!("Lost service");
                         return Err(io::Error::new(io::ErrorKind::ConnectionAborted, "Lost service"));
                     }
-                    pending.push(rsp_rx.map(move |v| match v {
+                    in_flight.push(rsp_rx.map(move |v| match v {
                         Ok(value) => {
                             trace!(id, "Response completed");
                             Ok(Frame { id, value })

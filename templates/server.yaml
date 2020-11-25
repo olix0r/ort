@@ -10,8 +10,8 @@ kind: Service
 metadata:
   labels:
     app: ort
-  name: server
-  namespace: {{$ns}}
+  name: logical
+  namespace: {{ $ns }}
 spec:
   selector:
     app: ort
@@ -24,45 +24,36 @@ spec:
       name: {{ $name }}
   {{-   end }}
   {{- end }}
-{{- if eq $linkerd.inject "enabled" }}
+{{- if $server.split }}
 ---
 apiVersion: split.smi-spec.io/v1alpha1
 kind: TrafficSplit
 metadata:
   namespace: {{ $ns }}
-  name: server
+  name: logical
 spec:
-  service: server
+  service: logical
   backends:
-  {{- range $i, $e := until (.Values.server.services | int) }}
-    - service: server-{{ printf "%03d" $i }}
+  {{- range $i, $e := until (int .Values.server.services) }}
+    - service: logical-{{ printf "%03d" $i }}
       weight: 1
   {{- end }}
-{{- end}}
-{{- range $i, $e := until (.Values.server.services | int) }}
----
-kind: ServiceAccount
-apiVersion: v1
-metadata:
-  name: server-{{printf "%03d" $i}}
-  namespace: {{ $ns }}
-  labels:
-    app: ort
-    ort.olix0r.net/role: server
-    ort.olix0r.net/instance: {{quote $i}}
+{{- end }}
+{{- range $i, $e := until (int .Values.server.services) }}
+{{- if $server.split }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
     app: ort
-  name: server-{{printf "%03d" $i}}
-  namespace: {{$ns}}
+  name: concrete-{{ printf "%03d" $i }}
+  namespace: {{ $ns }}
 spec:
   selector:
     app: ort
     ort.olix0r.net/role: server
-    ort.olix0r.net/instance: {{quote $i}}
+    ort.olix0r.net/instance: {{ quote $i }}
   ports:
   {{- range $name, $proto := $protocols }}
   {{-   if $proto }}
@@ -71,6 +62,17 @@ spec:
       name: {{ $name }}
   {{-   end }}
   {{- end }}
+{{- end }}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: server-{{ printf "%03d" $i }}
+  namespace: {{ $ns }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: server
+    ort.olix0r.net/instance: {{ quote $i }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -78,29 +80,29 @@ metadata:
   labels:
     app: ort
     ort.olix0r.net/role: server
-    ort.olix0r.net/instance: {{quote $i}}
-  name: server-{{printf "%03d" $i}}
-  namespace: {{$ns}}
+    ort.olix0r.net/instance: {{ quote $i }}
+  name: server-{{ printf "%03d" $i }}
+  namespace: {{ $ns }}
 spec:
   selector:
     matchLabels:
       app: ort
       ort.olix0r.net/role: server
-      ort.olix0r.net/instance: {{quote $i}}
-  replicas: {{$replicas}}
+      ort.olix0r.net/instance: {{ quote $i }}
+  replicas: {{ $replicas }}
   template:
     metadata:
       labels:
         app: ort
         ort.olix0r.net/role: server
-        ort.olix0r.net/instance: {{quote $i}}
+        ort.olix0r.net/instance: {{ quote $i }}
       annotations:
 {{ $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
-      serviceAccount: server-{{printf "%03d" $i}}
+      serviceAccount: server-{{ printf "%03d" $i }}
       containers:
         - name: main
-          image: {{$img}}
+          image: {{ $img }}
           env:
             - name: RUST_LOG
               value: {{ $server.log | default "info" | quote }}

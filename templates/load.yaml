@@ -61,6 +61,6 @@ spec:
           {{- range $f, $v := $flags }}
             - --{{ kebabcase $f }}={{ $v }}
           {{- end }}
-            - {{ printf "%s://server:%d" $protoName (int $proto.port) }}
+            - {{ printf "%s://logical:%d" $protoName (int $proto.port) }}
 {{-   end }}
 {{- end }}

@@ -12,7 +12,7 @@ protocols:
   tcp:
     port: 8090
     loadFlags:
-      clientsPerTarget: 3
+      requestsPerClient: 100
 
 load:
   #log: info
@@ -21,7 +21,6 @@ load:
   linkerd: {}
   flags: {}
     #requestsPerClient: 1
-    #httpClose: false
     #concurrencyLimit: 0
     #requestLimit: 0
     #requestLimitWindow: 1s
@@ -32,7 +31,9 @@ server:
   threads: 1
   services: 1
   replicas: 1
+  split: false
   linkerd: {}
+  flags: {}
 
 linkerd:
   inject: enabled
