@@ -1,8 +1,6 @@
 #![deny(warnings, rust_2018_idioms)]
 
 mod admin;
-mod distribution;
-mod latency;
 mod limit;
 mod metrics;
 mod rate_limit;
@@ -11,10 +9,12 @@ mod runner;
 mod timeout;
 
 use self::{
-    admin::Admin, distribution::Distribution, metrics::MakeMetrics, rate_limit::RateLimit,
-    runner::Runner, timeout::MakeRequestTimeout,
+    admin::Admin, metrics::MakeMetrics, rate_limit::RateLimit, runner::Runner,
+    timeout::MakeRequestTimeout,
 };
-use ort_core::{Error, MakeOrt, MakeReconnect, Ort, Reply, Spec};
+use ort_core::{
+    latency, parse_duration, Distribution, Error, MakeOrt, MakeReconnect, Ort, Reply, Spec,
+};
 use ort_grpc::client::MakeGrpc;
 use ort_http::client::MakeHttp;
 use ort_tcp::client::MakeTcp;
@@ -250,30 +250,3 @@ impl std::fmt::Display for InvalidTarget {
 }
 
 impl std::error::Error for InvalidTarget {}
-
-// === parse_duration ===
-
-fn parse_duration(s: &str) -> Result<Duration, InvalidDuration> {
-    use regex::Regex;
-
-    let re = Regex::new(r"^\s*(\d+)(ms|s)?\s*$").expect("duration regex");
-    let cap = re.captures(s).ok_or(InvalidDuration(()))?;
-    let magnitude = cap[1].parse().map_err(|_| InvalidDuration(()))?;
-    match cap.get(2).map(|m| m.as_str()) {
-        None if magnitude == 0 => Ok(Duration::from_millis(0)),
-        Some("ms") => Ok(Duration::from_millis(magnitude)),
-        Some("s") => Ok(Duration::from_secs(magnitude)),
-        _ => Err(InvalidDuration(())),
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct InvalidDuration(());
-
-impl std::fmt::Display for InvalidDuration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "invalid duration")
-    }
-}
-
-impl std::error::Error for InvalidDuration {}

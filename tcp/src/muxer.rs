@@ -329,20 +329,28 @@ mod tests {
 
     #[tokio::test]
     async fn roundtrip() {
-        let mux0 = Frame {
-            id: 1,
-            value: Bytes::from_static(b"abcde"),
-        };
-        let mux1 = Frame {
-            id: 1,
-            value: Bytes::from_static(b"fghij"),
-        };
+        let b0 = Bytes::from_static(b"abcde");
+        let b1 = Bytes::from_static(b"fghij");
 
         let mut buf = BytesMut::with_capacity(100);
 
         let mut enc = FramedEncode::<LengthDelimitedCodec>::default();
-        enc.encode(mux0.clone(), &mut buf).expect("must encode");
-        enc.encode(mux1.clone(), &mut buf).expect("must encode");
+        enc.encode(
+            Frame {
+                id: 1,
+                value: b0.clone(),
+            },
+            &mut buf,
+        )
+        .expect("must encode");
+        enc.encode(
+            Frame {
+                id: 2,
+                value: b1.clone(),
+            },
+            &mut buf,
+        )
+        .expect("must encode");
 
         let mut dec = FramedDecode::<LengthDelimitedCodec>::default();
         let d0 = dec
@@ -353,9 +361,9 @@ mod tests {
             .decode(&mut buf)
             .expect("must decode")
             .expect("must decode");
-        assert_eq!(d0.id, mux0.id);
-        assert_eq!(d0.value.freeze(), mux0.value);
-        assert_eq!(d1.id, mux1.id);
-        assert_eq!(d1.value.freeze(), mux1.value);
+        assert_eq!(d0.id, 1);
+        assert_eq!(d0.value.freeze(), b0);
+        assert_eq!(d1.id, 2);
+        assert_eq!(d1.value.freeze(), b1);
     }
 }

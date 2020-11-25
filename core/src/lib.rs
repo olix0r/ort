@@ -1,8 +1,14 @@
 #![deny(warnings, rust_2018_idioms)]
 
+mod distribution;
+pub mod latency;
 mod reconnect;
 
-pub use self::reconnect::MakeReconnect;
+pub use self::{
+    distribution::Distribution,
+    latency::{parse_duration, InvalidDuration, Latency},
+    reconnect::MakeReconnect,
+};
 use bytes::Bytes;
 use std::time::Duration;
 
