@@ -18,6 +18,7 @@ use ort_core::{Error, MakeOrt, MakeReconnect, Ort, Reply, Spec};
 use ort_grpc::client::MakeGrpc;
 use ort_http::client::MakeHttp;
 use ort_tcp::client::MakeTcp;
+use parking_lot::RwLock;
 use rand::{rngs::SmallRng, SeedableRng};
 use std::{net::SocketAddr, str::FromStr, sync::Arc};
 use structopt::StructOpt;
@@ -26,7 +27,6 @@ use tokio::{
         ctrl_c,
         unix::{signal, SignalKind},
     },
-    sync::{RwLock, Semaphore},
     time::Duration,
 };
 use tracing::debug_span;
@@ -37,12 +37,6 @@ use tracing_futures::Instrument;
 pub struct Cmd {
     #[structopt(long, parse(try_from_str), default_value = "0.0.0.0:8000")]
     admin_addr: SocketAddr,
-
-    #[structopt(long, default_value = "1")]
-    clients_per_target: usize,
-
-    #[structopt(long)]
-    requests_per_target: Option<usize>,
 
     #[structopt(long, default_value = "0")]
     request_limit: usize,
@@ -60,10 +54,7 @@ pub struct Cmd {
     total_requests: Option<usize>,
 
     #[structopt(long)]
-    http_close: bool,
-
-    #[structopt(long)]
-    concurrency_limit: Option<usize>,
+    requests_per_client: Option<usize>,
 
     #[structopt(long, default_value = "0")]
     response_latency: latency::Distribution,
@@ -72,8 +63,6 @@ pub struct Cmd {
     response_size: Distribution,
 
     target: Target,
-
-    targets: Vec<Target>,
 }
 
 type Target = Flavor<hyper::Uri, hyper::Uri, String>;
@@ -85,47 +74,30 @@ pub enum Flavor<H, G, T> {
     Tcp(T),
 }
 
-// === impl Load ===C
+// === impl Load ===
 
 impl Cmd {
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
         let Self {
             admin_addr,
-            clients_per_target,
-            requests_per_target,
             connect_timeout,
             request_timeout,
-            http_close,
-            concurrency_limit,
             request_limit,
             request_limit_window,
             response_latency,
             response_size,
             total_requests,
+            requests_per_client,
             target,
-            targets,
         } = self;
 
         let histogram = Arc::new(RwLock::new(hdrhistogram::Histogram::new(3).unwrap()));
         let admin = Admin::new(histogram.clone());
 
-        if clients_per_target == 0 {
-            tracing::error!("--clients-per-target must be positive");
-            return Ok(()); // FIXME should be an error
-        }
-
-        let limit = (
-            Arc::new(Semaphore::new(
-                concurrency_limit
-                    .filter(|c| *c > 0)
-                    .unwrap_or(clients_per_target),
-            )),
-            RateLimit::spawn(request_limit, request_limit_window),
-        );
+        let limit = RateLimit::spawn(request_limit, request_limit_window);
         let runner = Runner::new(
-            clients_per_target,
-            requests_per_target.unwrap_or(0),
-            total_requests.unwrap_or(0),
+            total_requests,
+            requests_per_client,
             limit,
             Arc::new(response_latency),
             Arc::new(response_size),
@@ -133,17 +105,16 @@ impl Cmd {
         );
 
         let connect = {
-            let http = MakeHttp::new(connect_timeout, http_close);
+            let http = MakeHttp::new(connect_timeout);
             let grpc = MakeGrpc::new();
-            let tcp = MakeTcp::new();
+            let tcp = MakeTcp::new(100_000);
             let connect = (http, grpc, tcp);
             let timeout = MakeRequestTimeout::new(connect, request_timeout);
             let metrics = MakeMetrics::new(timeout, histogram);
             MakeReconnect::new(metrics, connect_timeout, Duration::from_secs(1))
         };
 
-        let targets = Some(target).into_iter().chain(targets).collect::<Vec<_>>();
-        tokio::spawn(runner.run(connect, targets));
+        tokio::spawn(runner.run(connect, target));
 
         tokio::spawn(
             async move {
@@ -215,22 +186,46 @@ where
 
 // === impl Target ===
 
+impl Target {
+    fn uri_default_port(
+        uri: http::Uri,
+        port: u16,
+    ) -> Result<http::Uri, Box<dyn std::error::Error + 'static>> {
+        let mut p = uri.into_parts();
+        p.authority = match p.authority {
+            Some(a) => {
+                let s = format!("{}:{}", a.host(), a.port_u16().unwrap_or(port));
+                Some(http::uri::Authority::from_str(&s)?)
+            }
+            None => return Err(InvalidTarget(http::Uri::from_parts(p)?).into()),
+        };
+        let uri = http::Uri::from_parts(p)?;
+        Ok(uri)
+    }
+}
+
 impl FromStr for Target {
     type Err = Box<dyn std::error::Error + 'static>;
 
     fn from_str(s: &str) -> Result<Target, Self::Err> {
-        let uri = hyper::Uri::from_str(s)?;
-        match uri.scheme_str() {
-            Some("grpc") | None => Ok(Target::Grpc(uri)),
-            Some("http") => Ok(Target::Http(uri)),
-            Some("tcp") => {
-                let t = match uri.authority() {
-                    Some(a) => format!("{}:{}", a.host(), a.port_u16().unwrap_or(8090)),
-                    None => return Err(InvalidTarget(uri).into()),
-                };
-                Ok(Target::Tcp(t))
+        let uri = http::Uri::from_str(s)?;
+        match uri.clone().scheme_str() {
+            Some("grpc") => {
+                let uri = Self::uri_default_port(uri, 8070)?;
+                Ok(Target::Grpc(uri))
             }
-            Some(_) => Err(InvalidTarget(uri).into()),
+            Some("http") => {
+                let uri = Self::uri_default_port(uri, 8080)?;
+                Ok(Target::Http(uri))
+            }
+            Some("tcp") => {
+                let uri = Self::uri_default_port(uri, 8090)?;
+                match uri.authority() {
+                    Some(a) => Ok(Target::Tcp(a.to_string())),
+                    None => return Err(InvalidTarget(uri).into()),
+                }
+            }
+            _ => Err(InvalidTarget(uri).into()),
         }
     }
 }

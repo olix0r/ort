@@ -1,5 +1,7 @@
 //use ort_core::{Spec, Reply};
 use crate::proto::{ort_server, response_spec as spec, ResponseReply, ResponseSpec};
+use futures::prelude::*;
+use linkerd2_drain::Watch as Drain;
 use ort_core::{Error, Ort, Reply, Spec};
 use std::convert::TryInto;
 
@@ -13,11 +15,21 @@ impl<O: Ort + Sync> Server<O> {
         Self { inner }
     }
 
-    pub async fn serve(self, addr: std::net::SocketAddr) -> Result<(), Error> {
-        tonic::transport::Server::builder()
-            .add_service(ort_server::OrtServer::new(self))
-            .serve(addr)
-            .await?;
+    pub async fn serve(self, addr: std::net::SocketAddr, drain: Drain) -> Result<(), Error> {
+        let (close, closed) = tokio::sync::oneshot::channel();
+
+        tokio::pin! {
+            let srv = tonic::transport::Server::builder()
+                .add_service(ort_server::OrtServer::new(self))
+                .serve_with_shutdown(addr, closed.map(|_| ()));
+        }
+        tokio::select! {
+            _ = (&mut srv) => {}
+            handle = drain.signal() => {
+                let _ = close.send(());
+                handle.release_after(srv).await?;
+            }
+        }
         Ok(())
     }
 }
@@ -31,7 +43,7 @@ impl<O: Ort + Sync> ort_server::Ort for Server<O> {
         let ResponseSpec {
             latency,
             result,
-            data,
+            data: _,
         } = req.into_inner();
 
         let latency = latency.and_then(|l| l.try_into().ok()).unwrap_or_default();
@@ -66,7 +78,6 @@ impl<O: Ort + Sync> ort_server::Ort for Server<O> {
         let spec = Spec {
             latency,
             response_size,
-            data: data.into(),
         };
         let mut inner = self.inner.clone();
         inner

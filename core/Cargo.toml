@@ -13,6 +13,6 @@ bytes = "0.5"
 async-trait = "0.1"
 #rand = { version = "0.7", features = ["small_rng"] }
 serde = { version = "1.0", features = ["derive"], optional = true }
-tokio = { version = "0.2", features = ["time"] }
-#tracing = "0.1"
+tokio = { version = "0.2", features = ["macros", "time"] }
+tracing = "0.1"
 #tracing-futures = "0.2"

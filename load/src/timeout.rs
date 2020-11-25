@@ -1,5 +1,6 @@
 use crate::{Error, MakeOrt, Ort, Reply, Spec};
 use tokio::time;
+use tracing::debug;
 
 #[derive(Clone)]
 pub struct MakeRequestTimeout<M> {
@@ -40,11 +41,14 @@ impl<C: Ort + Send + 'static> Ort for RequestTimeout<C> {
     async fn ort(&mut self, spec: Spec) -> Result<Reply, Error> {
         match time::timeout(self.timeout, self.inner.ort(spec)).await {
             Ok(res) => res,
-            Err(_) => Err(RequestTimeout {
-                inner: (),
-                timeout: self.timeout,
+            Err(_) => {
+                debug!(timeout.ms = %self.timeout.as_millis(), "Request timed out");
+                Err(RequestTimeout {
+                    inner: (),
+                    timeout: self.timeout,
+                }
+                .into())
             }
-            .into()),
         }
     }
 }

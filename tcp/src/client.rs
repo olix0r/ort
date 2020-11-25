@@ -1,28 +1,26 @@
-use crate::{ReplyCodec, SpecCodec, PREFIX};
-use futures::prelude::*;
+use crate::{muxer, preface, ReplyCodec, SpecCodec};
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
-use std::sync::Arc;
 use tokio::{
-    net::{tcp, TcpStream},
-    prelude::*,
-    sync::Mutex,
+    io,
+    net::TcpStream,
+    sync::{mpsc, oneshot},
 };
 use tokio_util::codec::{FramedRead, FramedWrite};
+use tracing::{debug, debug_span};
 
 #[derive(Clone)]
-pub struct MakeTcp {}
+pub struct MakeTcp {
+    buffer_capacity: usize,
+}
 
 #[derive(Clone)]
-pub struct Tcp(Arc<Mutex<Inner>>);
-
-struct Inner {
-    write: FramedWrite<tcp::OwnedWriteHalf, SpecCodec>,
-    read: FramedRead<tcp::OwnedReadHalf, ReplyCodec>,
+pub struct Tcp {
+    tx: mpsc::Sender<(Spec, oneshot::Sender<Reply>)>,
 }
 
 impl MakeTcp {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(buffer_capacity: usize) -> Self {
+        Self { buffer_capacity }
     }
 }
 
@@ -31,27 +29,35 @@ impl MakeOrt<String> for MakeTcp {
     type Ort = Tcp;
 
     async fn make_ort(&mut self, target: String) -> Result<Tcp, Error> {
-        let mut stream = TcpStream::connect(target).await?;
+        debug!(%target, "Initializing a new connection");
+        let stream = TcpStream::connect(target).await?;
         stream.set_nodelay(true)?;
-        stream.write(PREFIX.as_bytes()).await?;
-        let (read, write) = stream.into_split();
-        Ok(Tcp(Arc::new(Mutex::new(Inner {
-            write: FramedWrite::new(write, SpecCodec::default()),
-            read: FramedRead::new(read, ReplyCodec::default()),
-        }))))
+
+        let local = stream.local_addr().expect("socket must have local addr");
+        let peer = stream.peer_addr().expect("socket must have peer addr");
+        let (rio, wio) = stream.into_split();
+        let write = FramedWrite::new(
+            wio,
+            preface::Codec::from(muxer::FramedEncode::from(SpecCodec::default())),
+        );
+        let read = FramedRead::new(rio, muxer::FramedDecode::from(ReplyCodec::default()));
+        let tx = debug_span!("conn", %local, %peer)
+            .in_scope(|| muxer::spawn_client(write, read, self.buffer_capacity));
+
+        Ok(Tcp { tx })
     }
 }
 
 #[async_trait::async_trait]
 impl Ort for Tcp {
     async fn ort(&mut self, spec: Spec) -> Result<Reply, Error> {
-        let Inner {
-            ref mut read,
-            ref mut write,
-        } = *self.0.lock().await;
-        write.send(spec).await?;
-        read.try_next()
-            .await?
-            .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotConnected).into())
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send((spec, tx))
+            .await
+            .map_err(|_| io::Error::new(io::ErrorKind::NotConnected, "Muxer lost"))?;
+        rx.await.map_err(|_| {
+            io::Error::new(io::ErrorKind::NotConnected, "Muxer dropped response").into()
+        })
     }
 }

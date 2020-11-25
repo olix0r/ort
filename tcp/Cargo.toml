@@ -9,10 +9,10 @@ publish = false
 async-trait = "0.1"
 bytes = "0.5"
 futures = "0.3"
-ort-core = { path = "../core", features = ["deser"] }
+linkerd2-drain = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main" }
+ort-core = { path = "../core" }
 rand = { version = "0.7", features = ["small_rng"] }
-serde = "1.0"
-serde_json = "1.0"
 tokio = { version = "0.2", features = ["io-util", "macros", "net", "signal", "sync", "time"] }
 tokio-util = { version = "0.3.1", features = ["codec"] }
 tracing = "0.1"
+tracing-futures = "0.2"

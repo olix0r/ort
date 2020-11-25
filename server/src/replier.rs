@@ -21,7 +21,6 @@ impl Ort for Replier {
         Spec {
             latency,
             response_size,
-            data: _,
         }: Spec,
     ) -> Result<Reply, Error> {
         let sleep = time::delay_for(latency);

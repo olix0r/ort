@@ -11,8 +11,10 @@ rustfmt = ["tonic-build/rustfmt"]
 
 [dependencies]
 async-trait = "0.1"
+futures = "0.3"
 http = "0.2"
 indexmap = "1.0"
+linkerd2-drain = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main" }
 ort-core = { path = "../core" }
 prost = "0.6"
 prost-types = "0.6"

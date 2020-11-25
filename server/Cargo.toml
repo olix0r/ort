@@ -1,6 +1,6 @@
 [package]
 name = "ort-server"
-version = "0.1.9"
+version = "0.1.10"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
 publish = false
@@ -11,6 +11,8 @@ grpc-fmt = ["ort-grpc/rustfmt"]
 [dependencies]
 async-trait = "0.1"
 bytes = "0.5"
+futures = "0.3"
+linkerd2-drain = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main" }
 ort-core = { path = "../core" }
 ort-grpc = { path = "../grpc" }
 ort-http = { path = "../http" }
