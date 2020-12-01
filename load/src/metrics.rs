@@ -1,19 +1,25 @@
 use hdrhistogram as hdr;
+use linkerd2_metrics::{metrics, Counter, MillisAsSeconds, Summary};
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
 use parking_lot::RwLock;
 use std::{sync::Arc, time::Instant};
 use tracing::trace;
 
+metrics! {
+    response_latency_seconds: Summary<MillisAsSeconds> { "Response latencies" },
+    response_failure_count: Counter { "A count of failed responses" }
+}
+
 #[derive(Clone)]
 pub struct MakeMetrics<M> {
     inner: M,
-    histogram: Arc<RwLock<hdr::Histogram<u64>>>,
+    histogram: Arc<RwLock<Summary<MillisAsSeconds>>,
 }
 
 #[derive(Clone)]
 pub struct Metrics<C> {
     inner: C,
-    histogram: Arc<RwLock<hdr::Histogram<u64>>>,
+    histogram: Arc<RwLock<Summary<MillisAsSeconds>>>,
 }
 
 impl<M> MakeMetrics<M> {
@@ -46,12 +52,7 @@ impl<C: Ort + Send + 'static> Ort for Metrics<C> {
         let elapsed = Instant::now() - t0;
         let micros = elapsed.as_micros();
         trace!(%micros);
-        let mut h = self.histogram.write();
-        if micros < std::u64::MAX as u128 {
-            h.saturating_record(micros as u64);
-        } else {
-            h.saturating_record(std::u64::MAX);
-        }
+        self.histogram.write().saturating_record(micros as u64);
         res
     }
 }

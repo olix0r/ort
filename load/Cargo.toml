@@ -18,6 +18,7 @@ ort-core = { path = "../core" }
 ort-grpc = { path = "../grpc" }
 ort-http = { path = "../http" }
 ort-tcp = { path = "../tcp" }
+linkerd2-metrics = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "ver/metrics-histogram-summary", features = ["summary"] }
 parking_lot = "0.10"
 rand = { version = "0.7", features = ["small_rng"] }
 serde = { version = "1.0", features = ["derive"] }

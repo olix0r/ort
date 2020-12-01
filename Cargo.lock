@@ -7,6 +7,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee2a4ec343196209d6594e19543ae87a39f96d5534d7174822a3ad825dd6ed7e"
 
 [[package]]
+name = "adler32"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aae1277d39aeec15cb388266ecc24b11c80469deae6067e17a1a7aa9e5c1f234"
+
+[[package]]
 name = "aho-corasick"
 version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -207,6 +213,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "deflate"
+version = "0.7.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "707b6a7b384888a70c8d2e8650b3e60170dfc6a67bb4aa67b6dfca57af4bedb4"
+dependencies = [
+ "adler32",
+ "byteorder",
+ "gzip-header",
+]
+
+[[package]]
 name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -369,6 +386,15 @@ dependencies = [
  "cfg-if 0.1.10",
  "libc",
  "wasi 0.9.0+wasi-snapshot-preview1",
+]
+
+[[package]]
+name = "gzip-header"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0131feb3d3bb2a5a238d8a4d09f6353b7ebfdc52e77bccbf4ea6eaa751dde639"
+dependencies = [
+ "crc32fast",
 ]
 
 [[package]]
@@ -558,7 +584,7 @@ checksum = "2448f6066e80e3bfc792e9c98bf705b4b0fc6e8ef5b43e5889aff0eaa9c58743"
 [[package]]
 name = "linkerd2-drain"
 version = "0.1.0"
-source = "git+https://github.com/linkerd/linkerd2-proxy?branch=main#04431a3794a39db6fea6270fa4dea1376c4a034a"
+source = "git+https://github.com/linkerd/linkerd2-proxy?branch=main#876ae02af1da140fc24924b2d82b5e8a40674f8d"
 dependencies = [
  "futures",
  "linkerd2-error",
@@ -569,9 +595,25 @@ dependencies = [
 [[package]]
 name = "linkerd2-error"
 version = "0.1.0"
-source = "git+https://github.com/linkerd/linkerd2-proxy?branch=main#04431a3794a39db6fea6270fa4dea1376c4a034a"
+source = "git+https://github.com/linkerd/linkerd2-proxy?branch=main#876ae02af1da140fc24924b2d82b5e8a40674f8d"
 dependencies = [
  "futures",
+]
+
+[[package]]
+name = "linkerd2-metrics"
+version = "0.1.0"
+source = "git+https://github.com/linkerd/linkerd2-proxy?branch=ver/metrics-histogram-summary#b6fc7ca3c7910e9aac8c5aa8722e7b9d8d85005f"
+dependencies = [
+ "deflate",
+ "futures",
+ "hdrhistogram",
+ "http",
+ "hyper",
+ "indexmap",
+ "parking_lot",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -811,6 +853,7 @@ dependencies = [
  "hdrhistogram",
  "http",
  "hyper",
+ "linkerd2-metrics",
  "ort-core",
  "ort-grpc",
  "ort-http",
