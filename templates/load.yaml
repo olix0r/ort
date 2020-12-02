@@ -4,7 +4,7 @@
 {{- $load := .Values.load }}
 {{- $linkerd := deepCopy .Values.linkerd | merge $load.linkerd }}
 {{- range $protoName, $proto := .Values.protocols }}
-{{-   if $proto}}
+{{-   if $proto.enabled }}
 ---
 kind: ServiceAccount
 apiVersion: v1

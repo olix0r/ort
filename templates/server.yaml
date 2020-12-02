@@ -18,7 +18,7 @@ spec:
     ort.olix0r.net/role: server
   ports:
   {{- range $name, $proto := $protocols }}
-  {{-   if $proto }}
+  {{-   if $proto.enabled }}
     - port: {{ $proto.port }}
       targetPort: {{ $proto.port }}
       name: {{ $name }}
@@ -56,7 +56,7 @@ spec:
     ort.olix0r.net/instance: {{ quote $i }}
   ports:
   {{- range $name, $proto := $protocols }}
-  {{-   if $proto }}
+  {{-   if $proto.enabled }}
     - port: {{ $proto.port }}
       targetPort: {{ $proto.port }}
       name: {{ $name }}
@@ -125,7 +125,7 @@ spec:
           {{- end }}
           ports:
           {{- range $name, $config := $protocols }}
-          {{-   if $config }}
+          {{-   if $config.enabled }}
             - protocol: TCP
               containerPort: {{ $config.port }}
               name: {{ $name }}

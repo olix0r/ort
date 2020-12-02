@@ -4,12 +4,15 @@ image: ghcr.io/olix0r/ort:v0.1.12
 # the service won't expose the port.
 protocols:
   grpc:
+    enabled: true
     port: 8070
     loadFlags: {}
   http:
+    enabled: true
     port: 8080
     loadFlags: {}
   tcp:
+    enabled: false
     port: 8090
     loadFlags:
       requestsPerClient: 100
