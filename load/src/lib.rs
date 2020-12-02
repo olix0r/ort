@@ -37,6 +37,9 @@ pub struct Cmd {
     admin_addr: SocketAddr,
 
     #[structopt(long)]
+    clients: Option<usize>,
+
+    #[structopt(long)]
     concurrency_limit: Option<usize>,
 
     #[structopt(long, default_value = "0")]
@@ -81,6 +84,7 @@ impl Cmd {
     pub async fn run(self, threads: usize) -> Result<(), Box<dyn std::error::Error + 'static>> {
         let Self {
             admin_addr,
+            clients,
             connect_timeout,
             concurrency_limit,
             request_timeout,
@@ -97,6 +101,7 @@ impl Cmd {
         let rate_limit = RateLimit::spawn(request_limit, request_limit_window);
 
         let runner = Runner::new(
+            clients.unwrap_or(threads),
             total_requests,
             (concurrency_limit, rate_limit),
             Arc::new(response_latency),
