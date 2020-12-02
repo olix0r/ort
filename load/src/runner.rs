@@ -61,7 +61,6 @@ impl<L: Acquire> Runner<L> {
                 Spec {
                     latency: response_latencies.sample(&mut rng),
                     response_size: response_sizes.sample(&mut rng) as usize,
-                    ..Default::default()
                 }
             };
 

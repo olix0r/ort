@@ -23,6 +23,7 @@ use tokio::{
         ctrl_c,
         unix::{signal, SignalKind},
     },
+    sync::Semaphore,
     time::Duration,
 };
 use tracing::debug_span;
@@ -33,6 +34,9 @@ use tracing_futures::Instrument;
 pub struct Cmd {
     #[structopt(long, parse(try_from_str), default_value = "0.0.0.0:8000")]
     admin_addr: SocketAddr,
+
+    #[structopt(long)]
+    concurrency_limit: Option<usize>,
 
     #[structopt(long, default_value = "0")]
     request_limit: usize,
@@ -77,6 +81,7 @@ impl Cmd {
         let Self {
             admin_addr,
             connect_timeout,
+            concurrency_limit,
             request_timeout,
             request_limit,
             request_limit_window,
@@ -87,7 +92,12 @@ impl Cmd {
             target,
         } = self;
 
-        let limit = RateLimit::spawn(request_limit, request_limit_window);
+        let limit = {
+            let c = concurrency_limit.map(|c| Arc::new(Semaphore::new(c)));
+            let r = RateLimit::spawn(request_limit, request_limit_window);
+            (c, r)
+        };
+
         let runner = Runner::new(
             total_requests,
             requests_per_client,
@@ -109,14 +119,12 @@ impl Cmd {
 
         let admin = Admin::new(report);
 
-        for t in 0..threads {
-            tokio::spawn(
-                runner
-                    .clone()
-                    .run(connect.clone(), target.clone())
-                    .instrument(debug_span!("runner", t)),
-            );
-        }
+        tokio::spawn(
+            runner
+                .clone()
+                .run(connect.clone(), target.clone())
+                .instrument(debug_span!("runner", threads)),
+        );
 
         tokio::spawn(
             async move {
