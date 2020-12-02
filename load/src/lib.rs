@@ -11,7 +11,8 @@ use self::{
     timeout::MakeRequestTimeout,
 };
 use ort_core::{
-    latency, parse_duration, Distribution, Error, MakeOrt, MakeReconnect, Ort, Reply, Spec,
+    latency, parse_duration, Distribution, Error, MakeOrt, MakeReconnect, MakeRecycle, Ort, Reply,
+    Spec,
 };
 use ort_grpc::client::MakeGrpc;
 use ort_http::client::MakeHttp;
@@ -97,20 +98,21 @@ impl Cmd {
 
         let runner = Runner::new(
             total_requests,
-            requests_per_client,
             (concurrency_limit, rate_limit),
             Arc::new(response_latency),
             Arc::new(response_size),
         );
 
         let (connect, report) = {
-            let http = MakeHttp::new(connect_timeout);
-            let grpc = MakeGrpc::new();
-            let tcp = MakeTcp::new(100_000);
-            let connect = (http, grpc, tcp);
+            let connect = (
+                MakeHttp::new(connect_timeout),
+                MakeGrpc::default(),
+                MakeTcp::new(100_000),
+            );
             let timeout = MakeRequestTimeout::new(connect, request_timeout);
             let (metrics, report) = MakeMetrics::new(timeout);
-            let reconnect = MakeReconnect::new(metrics, connect_timeout, Duration::from_secs(1));
+            let client = MakeRecycle::new(metrics, requests_per_client);
+            let reconnect = MakeReconnect::new(client, connect_timeout, Duration::from_secs(1));
             (reconnect, report)
         };
 

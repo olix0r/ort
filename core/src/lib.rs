@@ -4,11 +4,13 @@ mod distribution;
 pub mod latency;
 pub mod limit;
 mod reconnect;
+mod recycle;
 
 pub use self::{
     distribution::Distribution,
     latency::{parse_duration, InvalidDuration, Latency},
     reconnect::MakeReconnect,
+    recycle::{MakeRecycle, Recycle},
 };
 use bytes::Bytes;
 use std::time::Duration;

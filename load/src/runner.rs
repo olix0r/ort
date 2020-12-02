@@ -1,30 +1,71 @@
 use crate::{latency, Distribution, Error, Target};
 use ort_core::{limit::Acquire, MakeOrt, Ort, Spec};
 use rand::{distributions::Distribution as _, thread_rng};
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
 use tracing::{debug, info, trace};
 use tracing_futures::Instrument;
 
 #[derive(Clone)]
 pub struct Runner<L> {
-    total_requests: usize,
-    requests_per_client: Option<usize>,
     limit: L,
+    countdown: Arc<Countdown>,
     response_latencies: Arc<latency::Distribution>,
     response_sizes: Arc<Distribution>,
+}
+
+#[derive(Debug)]
+struct Countdown {
+    total: usize,
+    count: AtomicUsize,
+}
+
+impl Default for Countdown {
+    fn default() -> Self {
+        Self::from(std::usize::MAX)
+    }
+}
+
+impl From<usize> for Countdown {
+    fn from(total: usize) -> Self {
+        Self {
+            total,
+            count: 0.into(),
+        }
+    }
+}
+
+impl Countdown {
+    fn next(&self) -> Option<usize> {
+        let total = self.total;
+        self.count
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, move |c| {
+                if c == total {
+                    None
+                } else {
+                    Some(c + 1)
+                }
+            })
+            .ok()
+    }
 }
 
 impl<L: Acquire> Runner<L> {
     pub fn new(
         total_requests: Option<usize>,
-        requests_per_client: Option<usize>,
         limit: L,
         response_latencies: Arc<latency::Distribution>,
         response_sizes: Arc<Distribution>,
     ) -> Self {
         Self {
-            total_requests: total_requests.unwrap_or(std::usize::MAX),
-            requests_per_client: requests_per_client.filter(|n| *n > 0),
+            countdown: Arc::new(
+                total_requests
+                    .filter(|n| *n > 0)
+                    .unwrap_or(std::usize::MAX)
+                    .into(),
+            ),
             limit,
             response_latencies,
             response_sizes,
@@ -38,24 +79,14 @@ impl<L: Acquire> Runner<L> {
     {
         let Self {
             limit,
-            requests_per_client,
-            total_requests,
+            countdown,
             response_latencies,
             response_sizes,
         } = self;
 
-        debug!(total_requests, ?requests_per_client, %target, "Initializing new client");
-        let mut client = connect.make_ort(target.clone()).await?;
-
-        for n in 0..total_requests {
-            if let Some(rpc) = requests_per_client {
-                if n % rpc == 0 {
-                    debug!("Creating new client");
-                    client = connect.make_ort(target.clone()).await?;
-                }
-            }
-            let mut client = client.clone();
-
+        debug!(?countdown, %target, "Initializing new client");
+        let client = connect.make_ort(target.clone()).await?;
+        while let Some(n) = countdown.next() {
             let spec = {
                 let mut rng = thread_rng();
                 Spec {
@@ -65,6 +96,7 @@ impl<L: Acquire> Runner<L> {
             };
 
             let permit = limit.acquire().await;
+            let mut client = client.clone();
             tokio::spawn(
                 async move {
                     trace!(?spec, "Sending request");
