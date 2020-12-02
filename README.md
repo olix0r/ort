@@ -4,7 +4,7 @@ The project consists of a client and server that are ready to be deployed in
 Kubernetes, especially for testing [Linkerd](https://linkerd.io).
 
 ```
-ort 0.1.11
+ort 0.1.12
 Load harness
 
 USAGE:
