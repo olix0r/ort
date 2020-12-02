@@ -1,10 +1,8 @@
 #![deny(warnings, rust_2018_idioms)]
 
 mod admin;
-mod limit;
 mod metrics;
 mod rate_limit;
-mod report;
 mod runner;
 mod timeout;
 
@@ -12,14 +10,10 @@ use self::{
     admin::Admin, metrics::MakeMetrics, rate_limit::RateLimit, runner::Runner,
     timeout::MakeRequestTimeout,
 };
-use ort_core::{
-    latency, parse_duration, Distribution, Error, MakeOrt, MakeReconnect, Ort, Reply, Spec,
-};
+use ort_core::{latency, parse_duration, Distribution, Error, MakeOrt, Ort, Reply, Spec};
 use ort_grpc::client::MakeGrpc;
 use ort_http::client::MakeHttp;
 use ort_tcp::client::MakeTcp;
-use parking_lot::RwLock;
-use rand::{rngs::SmallRng, SeedableRng};
 use std::{net::SocketAddr, str::FromStr, sync::Arc};
 use structopt::StructOpt;
 use tokio::{
@@ -27,6 +21,7 @@ use tokio::{
         ctrl_c,
         unix::{signal, SignalKind},
     },
+    sync::Semaphore,
     time::Duration,
 };
 use tracing::debug_span;
@@ -38,6 +33,12 @@ pub struct Cmd {
     #[structopt(long, parse(try_from_str), default_value = "0.0.0.0:8000")]
     admin_addr: SocketAddr,
 
+    #[structopt(long)]
+    clients: Option<usize>,
+
+    #[structopt(long)]
+    concurrency_limit: Option<usize>,
+
     #[structopt(long, default_value = "0")]
     request_limit: usize,
 
@@ -47,14 +48,11 @@ pub struct Cmd {
     #[structopt(long, parse(try_from_str = parse_duration), default_value = "10s")]
     request_timeout: Duration,
 
-    #[structopt(long, parse(try_from_str = parse_duration), default_value = "10s")]
+    #[structopt(long, parse(try_from_str = parse_duration), default_value = "1s")]
     connect_timeout: Duration,
 
     #[structopt(long)]
     total_requests: Option<usize>,
-
-    #[structopt(long)]
-    requests_per_client: Option<usize>,
 
     #[structopt(long, default_value = "0")]
     response_latency: latency::Distribution,
@@ -77,54 +75,53 @@ pub enum Flavor<H, G, T> {
 // === impl Load ===
 
 impl Cmd {
-    pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
+    pub async fn run(self, threads: usize) -> Result<(), Box<dyn std::error::Error + 'static>> {
         let Self {
             admin_addr,
+            clients,
             connect_timeout,
+            concurrency_limit,
             request_timeout,
             request_limit,
             request_limit_window,
             response_latency,
             response_size,
             total_requests,
-            requests_per_client,
             target,
         } = self;
 
-        let histogram = Arc::new(RwLock::new(hdrhistogram::Histogram::new(3).unwrap()));
-        let admin = Admin::new(histogram.clone());
+        let concurrency_limit = concurrency_limit.map(Semaphore::new).map(Arc::new);
+        let rate_limit = RateLimit::spawn(request_limit, request_limit_window);
 
-        let limit = RateLimit::spawn(request_limit, request_limit_window);
         let runner = Runner::new(
+            clients.unwrap_or(threads),
             total_requests,
-            requests_per_client,
-            limit,
+            (concurrency_limit, rate_limit),
             Arc::new(response_latency),
             Arc::new(response_size),
-            SmallRng::from_entropy(),
         );
 
-        let connect = {
-            let http = MakeHttp::new(connect_timeout);
-            let grpc = MakeGrpc::new();
-            let tcp = MakeTcp::new(100_000);
-            let connect = (http, grpc, tcp);
-            let timeout = MakeRequestTimeout::new(connect, request_timeout);
-            let metrics = MakeMetrics::new(timeout, histogram);
-            MakeReconnect::new(metrics, connect_timeout, Duration::from_secs(1))
+        let (connect, report) = {
+            let client = (
+                MakeHttp::new(connect_timeout),
+                MakeGrpc::default(),
+                MakeTcp::new(100_000),
+            );
+            let client = MakeRequestTimeout::new(client, request_timeout);
+            MakeMetrics::new(client)
         };
-
-        tokio::spawn(runner.run(connect, target));
 
         tokio::spawn(
             async move {
-                admin
+                Admin::new(report)
                     .serve(admin_addr)
                     .await
                     .expect("Admin server must not fail")
             }
             .instrument(debug_span!("admin")),
         );
+
+        tokio::spawn(runner.run(connect, target));
 
         let mut term = signal(SignalKind::terminate())?;
         tokio::select! {

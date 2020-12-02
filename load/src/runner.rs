@@ -1,85 +1,136 @@
-use crate::{latency, limit::Acquire, Distribution, Error, Target};
-use ort_core::{MakeOrt, Ort, Spec};
-use rand::{distributions::Distribution as _, rngs::SmallRng};
-use std::sync::Arc;
-use tracing::{debug, info, trace};
+use crate::{latency, Distribution, Error, Target};
+use futures::{prelude::*, stream::FuturesUnordered};
+use ort_core::{limit::Acquire, MakeOrt, Ort, Spec};
+use rand::{distributions::Distribution as _, thread_rng};
+use std::sync::{
+    atomic::{AtomicUsize, Ordering},
+    Arc,
+};
+use tracing::{debug, debug_span, info, trace};
 use tracing_futures::Instrument;
 
 #[derive(Clone)]
 pub struct Runner<L> {
-    total_requests: usize,
-    requests_per_client: Option<usize>,
+    clients: usize,
     limit: L,
+    counter: Arc<Counter>,
     response_latencies: Arc<latency::Distribution>,
     response_sizes: Arc<Distribution>,
-    rng: SmallRng,
 }
+
+#[derive(Debug)]
+struct Counter {
+    limit: Option<usize>,
+    count: AtomicUsize,
+}
+
+// === impl Runner ===
 
 impl<L: Acquire> Runner<L> {
     pub fn new(
+        clients: usize,
         total_requests: Option<usize>,
-        requests_per_client: Option<usize>,
         limit: L,
         response_latencies: Arc<latency::Distribution>,
         response_sizes: Arc<Distribution>,
-        rng: SmallRng,
     ) -> Self {
         Self {
-            total_requests: total_requests.unwrap_or(std::usize::MAX),
-            requests_per_client: requests_per_client.filter(|n| *n > 0),
+            clients,
+            counter: Arc::new(Counter::from(total_requests)),
             limit,
             response_latencies,
             response_sizes,
-            rng,
         }
     }
 
-    pub async fn run<C>(self, mut connect: C, target: Target) -> Result<(), Error>
+    pub async fn run<C>(self, connect: C, target: Target) -> Result<(), Error>
     where
-        C: MakeOrt<Target> + Clone + Send + 'static,
-        C::Ort: Clone + Send + 'static,
+        C: MakeOrt<Target>,
     {
-        let Self {
-            limit,
-            requests_per_client,
-            total_requests,
-            response_latencies,
-            response_sizes,
-            mut rng,
-        } = self;
+        let mut tasks = FuturesUnordered::new();
 
-        debug!(total_requests, ?requests_per_client, %target, "Initializing new client");
-        let mut client = connect.make_ort(target.clone()).await?;
+        for c in 0..self.clients {
+            let Self {
+                clients: _,
+                limit,
+                counter,
+                response_latencies,
+                response_sizes,
+            } = self.clone();
+            let mut connect = connect.clone();
+            let target = target.clone();
 
-        for n in 0..total_requests {
-            if let Some(rpc) = requests_per_client {
-                if n % rpc == 0 {
-                    debug!("Creating new client");
-                    client = connect.make_ort(target.clone()).await?;
-                }
-            }
-            let mut client = client.clone();
-
-            let spec = Spec {
-                latency: response_latencies.sample(&mut rng),
-                response_size: response_sizes.sample(&mut rng) as usize,
-                ..Default::default()
-            };
-
-            let permit = limit.acquire().await;
-            tokio::spawn(
+            debug!(c, %target, "Initializing new client");
+            let client = tokio::spawn(
                 async move {
-                    trace!(?spec, "Sending request");
-                    match client.ort(spec).await {
-                        Ok(_) => trace!(n, "Request complete"),
-                        Err(error) => info!(%error, n, "Request failed"),
+                    let client = connect.make_ort(target).await?;
+
+                    while let Some(n) = counter.next() {
+                        let permit = limit.acquire().await;
+
+                        let spec = {
+                            let mut rng = thread_rng();
+                            Spec {
+                                latency: response_latencies.sample(&mut rng),
+                                response_size: response_sizes.sample(&mut rng) as usize,
+                            }
+                        };
+
+                        let mut client = client.clone();
+                        tokio::spawn(
+                            async move {
+                                trace!(?spec, "Sending request");
+                                match client.ort(spec).await {
+                                    Ok(_) => trace!("Request complete"),
+                                    Err(error) => info!(%error, "Request failed"),
+                                }
+                                drop(permit);
+                            }
+                            .instrument(debug_span!("request", n)),
+                        );
                     }
-                    drop(permit);
+
+                    Ok::<_, Error>(())
                 }
-                .in_current_span(),
+                .instrument(debug_span!("client", c)),
             );
+            tasks.push(client);
         }
 
+        while let Some(_) = tasks.next().await {}
+
         Ok(())
+    }
+}
+
+// === impl Counter ===
+
+impl Default for Counter {
+    fn default() -> Self {
+        Self::from(None)
+    }
+}
+
+impl From<Option<usize>> for Counter {
+    fn from(limit: Option<usize>) -> Self {
+        Self {
+            limit: limit.filter(|l| *l > 0),
+            count: 0.into(),
+        }
+    }
+}
+
+impl Counter {
+    fn next(&self) -> Option<usize> {
+        let limit = self.limit;
+        self.count
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, move |c| {
+                if Some(c) == limit {
+                    None
+                } else {
+                    Some(c + 1)
+                }
+            })
+            .ok()
     }
 }

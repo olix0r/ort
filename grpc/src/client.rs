@@ -1,15 +1,20 @@
 use crate::proto::{ort_client, response_spec as spec, ResponseSpec};
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
+use tracing::trace;
 
 #[derive(Clone)]
-pub struct MakeGrpc {}
+pub struct MakeGrpc {
+    window_size: u32,
+}
 
 #[derive(Clone)]
 pub struct Grpc(ort_client::OrtClient<tonic::transport::Channel>);
 
-impl MakeGrpc {
-    pub fn new() -> Self {
-        Self {}
+impl Default for MakeGrpc {
+    fn default() -> Self {
+        Self {
+            window_size: 2u32.pow(31) - 1,
+        }
     }
 }
 
@@ -18,7 +23,9 @@ impl MakeOrt<http::Uri> for MakeGrpc {
     type Ort = Grpc;
 
     async fn make_ort(&mut self, target: http::Uri) -> Result<Grpc, Error> {
-        let c = ort_client::OrtClient::connect(target.clone()).await?;
+        let chan = tonic::transport::Channel::builder(target)
+            .initial_connection_window_size(self.window_size);
+        let c = ort_client::OrtClient::connect(chan).await?;
         Ok(Grpc(c))
     }
 }
@@ -40,7 +47,10 @@ impl Ort for Grpc {
             ..ResponseSpec::default()
         };
 
-        let rsp = self.0.get(req).await?.into_inner();
+        trace!("Issuing request");
+        let res = self.0.get(req).await;
+        trace!("Received response");
+        let rsp = res?.into_inner();
         Ok(Reply {
             data: rsp.data.into(),
         })

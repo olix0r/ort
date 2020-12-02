@@ -1,4 +1,4 @@
-use crate::limit;
+use ort_core::limit;
 use std::sync::{Arc, Weak};
 use tokio::{sync::Semaphore, time};
 use tracing::debug;

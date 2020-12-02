@@ -11,7 +11,6 @@ bytes = "0.5"
 futures = "0.3"
 linkerd2-drain = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main" }
 ort-core = { path = "../core" }
-rand = { version = "0.7", features = ["small_rng"] }
 tokio = { version = "0.2", features = ["io-util", "macros", "net", "signal", "sync", "time"] }
 tokio-util = { version = "0.3.1", features = ["codec"] }
 tracing = "0.1"

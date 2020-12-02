@@ -27,16 +27,14 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let Ort { threads, cmd } = Ort::from_args();
 
     let threads = threads.unwrap_or_else(num_cpus::get);
-    let mut rt = {
-        let mut rt = rt::Builder::new();
-        rt.threaded_scheduler();
-        rt.enable_all();
-        rt.core_threads(threads);
-        rt.build()?
-    };
+    let mut rt = rt::Builder::new()
+        .threaded_scheduler()
+        .enable_all()
+        .core_threads(threads)
+        .build()?;
 
     match cmd {
-        Cmd::Load(l) => rt.block_on(l.run()),
+        Cmd::Load(l) => rt.block_on(l.run(threads)),
         Cmd::Server(s) => rt.block_on(s.run()),
     }
 }

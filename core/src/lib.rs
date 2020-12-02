@@ -2,12 +2,11 @@
 
 mod distribution;
 pub mod latency;
-mod reconnect;
+pub mod limit;
 
 pub use self::{
     distribution::Distribution,
     latency::{parse_duration, InvalidDuration, Latency},
-    reconnect::MakeReconnect,
 };
 use bytes::Bytes;
 use std::time::Duration;
@@ -15,7 +14,6 @@ use std::time::Duration;
 #[async_trait::async_trait]
 pub trait MakeOrt<T>: Clone + Send + 'static {
     type Ort: Ort;
-
     async fn make_ort(&mut self, target: T) -> Result<Self::Ort, Error>;
 }
 

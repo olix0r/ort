@@ -1,3 +1,5 @@
+//! TODO TCP clients shoudl automatically reconnect, but they don't
+
 use crate::{muxer, preface, ReplyCodec, SpecCodec};
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
 use tokio::{
@@ -33,8 +35,8 @@ impl MakeOrt<String> for MakeTcp {
         let stream = TcpStream::connect(target).await?;
         stream.set_nodelay(true)?;
 
-        let local = stream.local_addr().expect("socket must have local addr");
-        let peer = stream.peer_addr().expect("socket must have peer addr");
+        let local = stream.local_addr()?;
+        let peer = stream.peer_addr()?;
         let (rio, wio) = stream.into_split();
         let write = FramedWrite::new(
             wio,
