@@ -23,7 +23,7 @@ impl<A: Acquire> Acquire for Option<A> {
 
     async fn acquire(&self) -> Self::Handle {
         match self {
-            Some(s) => Some(s.clone().acquire().await),
+            Some(semaphore) => Some(semaphore.acquire().await),
             None => None,
         }
     }

@@ -1,5 +1,5 @@
-use crate::{latency, limit::Acquire, Distribution, Error, Target};
-use ort_core::{MakeOrt, Ort, Spec};
+use crate::{latency, Distribution, Error, Target};
+use ort_core::{limit::Acquire, MakeOrt, Ort, Spec};
 use rand::{distributions::Distribution as _, thread_rng};
 use std::sync::Arc;
 use tracing::{debug, info, trace};

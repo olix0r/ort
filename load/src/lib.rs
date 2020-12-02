@@ -1,7 +1,6 @@
 #![deny(warnings, rust_2018_idioms)]
 
 mod admin;
-mod limit;
 mod metrics;
 mod rate_limit;
 mod runner;

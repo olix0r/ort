@@ -2,6 +2,7 @@
 
 mod distribution;
 pub mod latency;
+pub mod limit;
 mod reconnect;
 
 pub use self::{
