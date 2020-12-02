@@ -4,7 +4,6 @@ mod admin;
 mod limit;
 mod metrics;
 mod rate_limit;
-mod report;
 mod runner;
 mod timeout;
 
@@ -18,8 +17,6 @@ use ort_core::{
 use ort_grpc::client::MakeGrpc;
 use ort_http::client::MakeHttp;
 use ort_tcp::client::MakeTcp;
-use parking_lot::RwLock;
-use rand::{rngs::SmallRng, SeedableRng};
 use std::{net::SocketAddr, str::FromStr, sync::Arc};
 use structopt::StructOpt;
 use tokio::{
@@ -91,9 +88,6 @@ impl Cmd {
             target,
         } = self;
 
-        let histogram = Arc::new(RwLock::new(hdrhistogram::Histogram::new(3).unwrap()));
-        let admin = Admin::new(histogram.clone());
-
         let limit = RateLimit::spawn(request_limit, request_limit_window);
         let runner = Runner::new(
             total_requests,
@@ -101,18 +95,22 @@ impl Cmd {
             limit,
             Arc::new(response_latency),
             Arc::new(response_size),
-            SmallRng::from_entropy(),
         );
 
-        let connect = {
+        let (connect, report) = {
             let http = MakeHttp::new(connect_timeout);
             let grpc = MakeGrpc::new();
             let tcp = MakeTcp::new(100_000);
             let connect = (http, grpc, tcp);
             let timeout = MakeRequestTimeout::new(connect, request_timeout);
-            let metrics = MakeMetrics::new(timeout, histogram);
-            MakeReconnect::new(metrics, connect_timeout, Duration::from_secs(1))
+            let (metrics, report) = MakeMetrics::new(timeout);
+            (
+                MakeReconnect::new(metrics, connect_timeout, Duration::from_secs(1)),
+                report,
+            )
         };
+
+        let admin = Admin::new(report);
 
         tokio::spawn(runner.run(connect, target));
 

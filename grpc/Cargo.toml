@@ -17,7 +17,6 @@ linkerd2-drain = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "
 ort-core = { path = "../core" }
 prost = "0.6"
 prost-types = "0.6"
-rand = { version = "0.7", features = ["small_rng"] }
 tokio = { version = "0.2", features = ["time"] }
 tonic = { version = "0.3", default-features = false, features = ["prost", "codegen", "transport"] }
 tracing = "0.1"

@@ -8,7 +8,6 @@ use ort_core::latency;
 use ort_grpc::server as grpc;
 use ort_http::server as http;
 use ort_tcp::server as tcp;
-use rand::{rngs::SmallRng, SeedableRng};
 use std::net::SocketAddr;
 use structopt::StructOpt;
 use tokio::signal::{
@@ -34,7 +33,7 @@ pub struct Cmd {
 
 impl Cmd {
     pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
-        let replier = Replier::new(self.response_latency, SmallRng::from_entropy());
+        let replier = Replier::new(self.response_latency);
 
         let (close, closed) = drain::channel();
         tokio::spawn(grpc::Server::new(replier.clone()).serve(self.grpc_addr, closed.clone()));

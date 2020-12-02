@@ -1,6 +1,6 @@
 use crate::{latency, limit::Acquire, Distribution, Error, Target};
 use ort_core::{MakeOrt, Ort, Spec};
-use rand::{distributions::Distribution as _, rngs::SmallRng};
+use rand::{distributions::Distribution as _, thread_rng};
 use std::sync::Arc;
 use tracing::{debug, info, trace};
 use tracing_futures::Instrument;
@@ -12,7 +12,6 @@ pub struct Runner<L> {
     limit: L,
     response_latencies: Arc<latency::Distribution>,
     response_sizes: Arc<Distribution>,
-    rng: SmallRng,
 }
 
 impl<L: Acquire> Runner<L> {
@@ -22,7 +21,6 @@ impl<L: Acquire> Runner<L> {
         limit: L,
         response_latencies: Arc<latency::Distribution>,
         response_sizes: Arc<Distribution>,
-        rng: SmallRng,
     ) -> Self {
         Self {
             total_requests: total_requests.unwrap_or(std::usize::MAX),
@@ -30,7 +28,6 @@ impl<L: Acquire> Runner<L> {
             limit,
             response_latencies,
             response_sizes,
-            rng,
         }
     }
 
@@ -45,7 +42,6 @@ impl<L: Acquire> Runner<L> {
             total_requests,
             response_latencies,
             response_sizes,
-            mut rng,
         } = self;
 
         debug!(total_requests, ?requests_per_client, %target, "Initializing new client");
@@ -60,10 +56,13 @@ impl<L: Acquire> Runner<L> {
             }
             let mut client = client.clone();
 
-            let spec = Spec {
-                latency: response_latencies.sample(&mut rng),
-                response_size: response_sizes.sample(&mut rng) as usize,
-                ..Default::default()
+            let spec = {
+                let mut rng = thread_rng();
+                Spec {
+                    latency: response_latencies.sample(&mut rng),
+                    response_size: response_sizes.sample(&mut rng) as usize,
+                    ..Default::default()
+                }
             };
 
             let permit = limit.acquire().await;
