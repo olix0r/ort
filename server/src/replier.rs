@@ -18,9 +18,9 @@ impl Replier {
 #[async_trait::async_trait]
 impl Ort for Replier {
     async fn ort(&mut self, spec: Spec) -> Result<Reply, Error> {
-        let latency = self.latencies.sample(&mut thread_rng());
-        trace!(?latency, ?spec.latency, ?self.latencies, spec.response_size, "Serving request");
-        let sleep = time::delay_for(spec.latency.max(latency));
+        let latency = spec.latency.max(self.latencies.sample(&mut thread_rng()));
+        trace!(?latency, spec.response_size, "Serving request");
+        let sleep = time::delay_for(latency);
         let mut buf = BytesMut::with_capacity(spec.response_size);
         thread_rng().fill_bytes(buf.as_mut());
         sleep.await;
