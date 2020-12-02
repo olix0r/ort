@@ -92,16 +92,13 @@ impl Cmd {
             target,
         } = self;
 
-        let limit = {
-            let c = concurrency_limit.map(|c| Arc::new(Semaphore::new(c)));
-            let r = RateLimit::spawn(request_limit, request_limit_window);
-            (c, r)
-        };
+        let concurrency_limit = concurrency_limit.map(Semaphore::new).map(Arc::new);
+        let rate_limit = RateLimit::spawn(request_limit, request_limit_window);
 
         let runner = Runner::new(
             total_requests,
             requests_per_client,
-            limit,
+            (concurrency_limit, rate_limit),
             Arc::new(response_latency),
             Arc::new(response_size),
         );
@@ -117,23 +114,21 @@ impl Cmd {
             (reconnect, report)
         };
 
-        let admin = Admin::new(report);
+        tokio::spawn(
+            async move {
+                Admin::new(report)
+                    .serve(admin_addr)
+                    .await
+                    .expect("Admin server must not fail")
+            }
+            .instrument(debug_span!("admin")),
+        );
 
         tokio::spawn(
             runner
                 .clone()
                 .run(connect.clone(), target.clone())
                 .instrument(debug_span!("runner", threads)),
-        );
-
-        tokio::spawn(
-            async move {
-                admin
-                    .serve(admin_addr)
-                    .await
-                    .expect("Admin server must not fail")
-            }
-            .instrument(debug_span!("admin")),
         );
 
         let mut term = signal(SignalKind::terminate())?;

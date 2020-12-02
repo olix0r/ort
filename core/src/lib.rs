@@ -16,7 +16,6 @@ use std::time::Duration;
 #[async_trait::async_trait]
 pub trait MakeOrt<T>: Clone + Send + 'static {
     type Ort: Ort;
-
     async fn make_ort(&mut self, target: T) -> Result<Self::Ort, Error>;
 }
 
