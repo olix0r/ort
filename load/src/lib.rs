@@ -44,7 +44,7 @@ pub struct Cmd {
     #[structopt(long, parse(try_from_str = parse_duration), default_value = "10s")]
     request_timeout: Duration,
 
-    #[structopt(long, parse(try_from_str = parse_duration), default_value = "10s")]
+    #[structopt(long, parse(try_from_str = parse_duration), default_value = "1s")]
     connect_timeout: Duration,
 
     #[structopt(long)]
@@ -74,7 +74,7 @@ pub enum Flavor<H, G, T> {
 // === impl Load ===
 
 impl Cmd {
-    pub async fn run(self) -> Result<(), Box<dyn std::error::Error + 'static>> {
+    pub async fn run(self, threads: usize) -> Result<(), Box<dyn std::error::Error + 'static>> {
         let Self {
             admin_addr,
             connect_timeout,
@@ -104,15 +104,20 @@ impl Cmd {
             let connect = (http, grpc, tcp);
             let timeout = MakeRequestTimeout::new(connect, request_timeout);
             let (metrics, report) = MakeMetrics::new(timeout);
-            (
-                MakeReconnect::new(metrics, connect_timeout, Duration::from_secs(1)),
-                report,
-            )
+            let reconnect = MakeReconnect::new(metrics, connect_timeout, Duration::from_secs(1));
+            (reconnect, report)
         };
 
         let admin = Admin::new(report);
 
-        tokio::spawn(runner.run(connect, target));
+        for t in 0..threads {
+            tokio::spawn(
+                runner
+                    .clone()
+                    .run(connect.clone(), target.clone())
+                    .instrument(debug_span!("runner", t)),
+            );
+        }
 
         tokio::spawn(
             async move {
