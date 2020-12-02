@@ -11,7 +11,9 @@ pub struct Grpc(ort_client::OrtClient<tonic::transport::Channel>);
 
 impl Default for MakeGrpc {
     fn default() -> Self {
-        Self { window_size: std::u32::MAX }
+        Self {
+            window_size: 2u32.pow(31) - 1,
+        }
     }
 }
 

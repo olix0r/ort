@@ -8,11 +8,15 @@ use std::convert::TryInto;
 #[derive(Clone)]
 pub struct Server<O> {
     inner: O,
+    window_size: u32,
 }
 
 impl<O: Ort + Sync> Server<O> {
     pub fn new(inner: O) -> Self {
-        Self { inner }
+        Self {
+            inner,
+            window_size: 2u32.pow(31) - 1,
+        }
     }
 
     pub async fn serve(self, addr: std::net::SocketAddr, drain: Drain) -> Result<(), Error> {
@@ -20,6 +24,7 @@ impl<O: Ort + Sync> Server<O> {
 
         tokio::pin! {
             let srv = tonic::transport::Server::builder()
+                .initial_connection_window_size(self.window_size)
                 .add_service(ort_server::OrtServer::new(self))
                 .serve_with_shutdown(addr, closed.map(|_| ()));
         }
