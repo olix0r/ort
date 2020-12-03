@@ -62,5 +62,9 @@ spec:
             - --{{ kebabcase $f }}={{ $v }}
           {{- end }}
             - {{ printf "%s://logical:%d" $protoName (int $proto.port) }}
+          ports:
+            - protocol: TCP
+              containerPort: 8000
+              name: admin-http
 {{-   end }}
 {{- end }}

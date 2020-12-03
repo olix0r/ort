@@ -14,20 +14,19 @@ protocols:
   tcp:
     enabled: false
     port: 8090
-    loadFlags:
-      requestsPerClient: 100
+    loadFlags: {}
 
 load:
   #log: info
   replicas: 1
-  threads: 3
+  threads: 1
   linkerd: {}
   flags: {}
-    #requestsPerClient: 1
-    #concurrencyLimit: 0
-    #requestLimit: 0
+    #clients: 2
+    #concurrencyLimit: 100
+    #requestLimit: 100
     #requestLimitWindow: 1s
-    #responseSizes: 0=1024,100=1048576
+    #responseSizes: 0=1ms,100=1s
 
 server:
   #log: debug
@@ -44,3 +43,17 @@ linkerd:
   config: {}
     #proxyImage: ...
     #proxyVersion: ...
+
+prometheus:
+  enabled: false
+  image: prom/prometheus:v2.23.0
+  linkerd: {}
+  flags:
+    storage.tsdb.path: /data
+    storage.tsdb.retention.time: 1w
+    config.file: /etc/prometheus/prometheus.yml
+    log.level: info
+  globalConfig:
+    scrape_interval: 10s
+    scrape_timeout: 10s
+    evaluation_interval: 10s

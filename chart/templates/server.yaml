@@ -121,7 +121,9 @@ spec:
           {{- end }}
             - server
           {{- range $f, $v := $srv.flags }}
+          {{- if ne $f "adminAddr" }}
             - --{{ kebabcase $f }}={{ $v }}
+          {{- end }}
           {{- end }}
           ports:
           {{- range $name, $config := $protocols }}
