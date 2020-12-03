@@ -25,13 +25,13 @@ roleRef:
   name: ort-prometheus
 subjects:
 - kind: ServiceAccount
-  name: ort-prometheus
+  name: prometheus
   namespace: {{ .Release.Namespace }}
 ---
 kind: ServiceAccount
 apiVersion: v1
 metadata:
-  name: linkerd-prometheus
+  name: prometheus
   namespace: {{ .Release.Namespace }}
   labels:
     app: ort
