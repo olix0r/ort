@@ -1,7 +1,8 @@
-{{- $ns := .Release.Namespace -}}
-{{- $linkerd := deepCopy .Values.linkerd | merge .Values.viz.prometheus.linkerd }}
+{{- $ns := .Release.Namespace }}
+{{- $linkerd := deepCopy .Values.linkerd | merge .Values.viz.grafana.linkerd }}
 {{- if .Values.viz.enabled }}
-{{-   with .Values.viz.grafana -}}---
+{{-   with .Values.viz.grafana }}
+---
 kind: ConfigMap
 apiVersion: v1
 metadata:
