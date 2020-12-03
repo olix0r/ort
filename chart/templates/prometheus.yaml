@@ -28,7 +28,7 @@ data:
               - __meta_kubernetes_pod_container_name
               - __meta_kubernetes_pod_container_port_name
             action: keep
-            regex: ^load-.*+;admin-http$
+            regex: ^load-.+;admin-http$
       - job_name: 'linkerd-proxy'
         kubernetes_sd_configs:
           - role: pod
