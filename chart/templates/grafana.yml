@@ -16,7 +16,7 @@ data:
     instance_name = ort-grafana
 
     [server]
-    root_url = %(protocol)s://%(domain)s:/grafana/
+    root_url = %(protocol)s://%(domain)s:/
 
     [auth]
     disable_login_form = true
