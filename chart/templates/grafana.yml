@@ -97,6 +97,8 @@ spec:
       labels:
         app: ort
         ort.olix0r.net/role: grafana
+      annotations:
+        {{- $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       containers:
         - name: grafana
