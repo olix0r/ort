@@ -1,7 +1,7 @@
 {{- $ns := .Release.Namespace -}}
-{{- $linkerd := deepCopy .Values.linkerd | merge .Values.prometheus.linkerd }}
-{{- with .Values.prometheus -}}
-{{- if .enabled }}
+{{- $linkerd := deepCopy .Values.linkerd | merge .Values.viz.prometheus.linkerd }}
+{{- if .Values.viz.enabled }}
+{{-   with .Values.viz.prometheus -}}
 ---
 kind: ConfigMap
 apiVersion: v1
@@ -97,7 +97,7 @@ spec:
         app: ort
         ort.olix0r.net/role: prometheus
       annotations:
-{{ $linkerd | include "ort.linkerd" | indent 8 }}
+        {{- $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       securityContext:
         fsGroup: 65534
@@ -141,5 +141,5 @@ spec:
       - configMap:
           name: prometheus
         name: prometheus
-{{- end }}
+{{-   end }}
 {{- end }}

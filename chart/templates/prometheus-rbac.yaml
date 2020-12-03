@@ -1,4 +1,4 @@
-{{- if .Values.prometheus.enabled -}}
+{{- if .Values.viz.prometheus.enabled -}}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1

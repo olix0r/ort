@@ -1,0 +1,9 @@
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: grafana
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: grafana

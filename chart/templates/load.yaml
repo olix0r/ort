@@ -39,7 +39,7 @@ spec:
         ort.olix0r.net/role: load
         ort.olix0r.net/protocol: {{ $protoName }}
       annotations:
-{{ $linkerd | include "ort.linkerd" | indent 8 }}
+        {{- $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       serviceAccount: load-{{ $protoName }}
       containers:

@@ -44,16 +44,20 @@ linkerd:
     #proxyImage: ...
     #proxyVersion: ...
 
-prometheus:
+viz:
   enabled: false
-  image: prom/prometheus:v2.23.0
-  linkerd: {}
-  flags:
-    storage.tsdb.path: /data
-    storage.tsdb.retention.time: 1w
-    config.file: /etc/prometheus/prometheus.yml
-    log.level: info
-  globalConfig:
-    scrape_interval: 10s
-    scrape_timeout: 10s
-    evaluation_interval: 10s
+  grafana:
+    image: docker.io/grafana/grafana:7.3.4
+    linkerd: {}
+  prometheus:
+    image: docker.io/prom/prometheus:v2.23.0
+    linkerd: {}
+    flags:
+      storage.tsdb.path: /data
+      storage.tsdb.retention.time: 1w
+      config.file: /etc/prometheus/prometheus.yml
+      log.level: info
+    globalConfig:
+      scrape_interval: 10s
+      scrape_timeout: 10s
+      evaluation_interval: 10s
