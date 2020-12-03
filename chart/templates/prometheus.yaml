@@ -68,7 +68,7 @@ metadata:
     app: ort
     ort.olix0r.net/role: prometheus
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   selector:
     app: ort
     ort.olix0r.net/role: prometheus

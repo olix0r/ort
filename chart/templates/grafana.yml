@@ -69,7 +69,7 @@ metadata:
     app: ort
     ort.olix0r.net/role: grafana
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   selector:
     app: ort
     ort.olix0r.net/role: grafana
