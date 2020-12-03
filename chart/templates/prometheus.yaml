@@ -1,0 +1,127 @@
+{{- $ns := .Release.Namespace -}}
+{{- $linkerd := deepCopy .Values.linkerd | merge .Values.prometheus.linkerd }}
+{{- with .Values.prometheus -}}
+{{- if .enabled }}
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: prometheus
+  namespace: {{ $ns }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: prometheus
+data:
+  prometheus.yml: |-
+    {{- if .globalConfig }}
+    global:
+      {{- toYaml .globalConfig | trim | nindent 6 }}
+    {{- end}}
+    scrape_configs:
+      - job_name: 'load'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['{{ $ns }}']
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_container_name
+              - __meta_kubernetes_pod_container_port_name
+            action: keep
+            regex: ^load-[a-z0-9]+;admin-http$
+      - job_name: 'linkerd-proxy'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['{{ $ns }}']
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_container_name
+              - __meta_kubernetes_pod_container_port_name
+            action: keep
+            regex: ^linkerd-proxy;linkerd-admin$
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: prometheus
+  namespace: {{ $ns }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: prometheus
+spec:
+  type: ClusterIP
+  selector:
+    app: ort
+    ort.olix0r.net/role: prometheus
+  ports:
+  - name: http
+    port: 9090
+    targetPort: 9090
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ort
+    ort.olix0r.net/role: prometheus
+  name: prometheus
+  namespace: {{ $ns }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ort
+      ort.olix0r.net/role: prometheus
+  template:
+    metadata:
+      labels:
+        app: ort
+        ort.olix0r.net/role: prometheus
+      annotations:
+{{ $linkerd | include "ort.linkerd" | indent 8 }}
+    spec:
+      securityContext:
+        fsGroup: 65534
+      containers:
+      - args:
+        {{- range $key, $value := .flags }}
+        - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
+        {{- end }}
+        image: {{ .image }}
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        name: prometheus
+        ports:
+        - containerPort: 9090
+          name: http
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+        volumeMounts:
+        - mountPath: /data
+          name: data
+        - mountPath: /etc/prometheus/prometheus.yml
+          name: prometheus
+          subPath: prometheus.yml
+          readOnly: true
+      serviceAccountName: prometheus
+      volumes:
+      - name: data
+        emptyDir: {}
+      - configMap:
+          name: prometheus
+        name: prometheus
+{{- end }}
+{{- end }}
