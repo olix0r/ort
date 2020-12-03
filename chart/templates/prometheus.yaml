@@ -18,7 +18,7 @@ data:
       {{- toYaml .globalConfig | trim | nindent 6 }}
     {{- end}}
     scrape_configs:
-      - job_name: 'load'
+      - job_name: 'ort'
         kubernetes_sd_configs:
           - role: pod
             namespaces:
@@ -29,17 +29,20 @@ data:
               - __meta_kubernetes_pod_container_port_name
             action: keep
             regex: ^load;admin-http$
-      - job_name: 'linkerd-proxy'
-        kubernetes_sd_configs:
-          - role: pod
-            namespaces:
-              names: ['{{ $ns }}']
-        relabel_configs:
           - source_labels:
               - __meta_kubernetes_pod_container_name
               - __meta_kubernetes_pod_container_port_name
             action: keep
             regex: ^linkerd-proxy;linkerd-admin$
+          - source_labels: [__meta_kubernetes_pod_label_ort_olix0r_net_role]
+            action: replace
+            target_label: ort_role
+          - source_labels: [__meta_kubernetes_pod_label_ort_olix0r_net_protocol]
+            action: replace
+            target_label: ort_protocol
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
 ---
 kind: Service
 apiVersion: v1
