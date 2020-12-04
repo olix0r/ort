@@ -41,13 +41,13 @@ data:
           - source_labels: [__meta_kubernetes_pod_label_ort_olix0r_net_protocol]
             action: replace
             target_label: ort_protocol
-          - source_labels: [__meta_kubernetes_pod_annotations_ort_olix0r_net_threads]
+          - source_labels: [__meta_kubernetes_pod_annotation_ort_olix0r_net_threads]
             action: replace
             target_label: ort_threads
-          - source_labels: [__meta_kubernetes_pod_annotations_ort_olix0r_net_request_limit]
+          - source_labels: [__meta_kubernetes_pod_annotation_ort_olix0r_net_request_limit]
             action: replace
             target_label: ort_request_limit
-          - source_labels: [__meta_kubernetes_pod_annotations_ort_olix0r_net_concurrency_limit]
+          - source_labels: [__meta_kubernetes_pod_annotation_ort_olix0r_net_concurrency_limit]
             action: replace
             target_label: ort_concurrency_limit
       - job_name: 'proxy'
@@ -73,13 +73,13 @@ data:
           - source_labels: [__meta_kubernetes_pod_label_ort_olix0r_net_protocol]
             action: replace
             target_label: ort_protocol
-          - source_labels: [__meta_kubernetes_pod_annotations_ort_olix0r_net_threads]
+          - source_labels: [__meta_kubernetes_pod_annotation_ort_olix0r_net_threads]
             action: replace
             target_label: ort_threads
-          - source_labels: [__meta_kubernetes_pod_annotations_ort_olix0r_net_request_limit]
+          - source_labels: [__meta_kubernetes_pod_annotation_ort_olix0r_net_request_limit]
             action: replace
             target_label: ort_request_limit
-          - source_labels: [__meta_kubernetes_pod_annotations_ort_olix0r_net_concurrency_limit]
+          - source_labels: [__meta_kubernetes_pod_annotation_ort_olix0r_net_concurrency_limit]
             action: replace
             target_label: ort_concurrency_limit
 ---
@@ -120,7 +120,7 @@ spec:
       labels:
         app: ort
         ort.olix0r.net/role: prometheus
-      annotations:
+      annotation:
         {{- $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       securityContext:
