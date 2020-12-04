@@ -120,7 +120,7 @@ spec:
       labels:
         app: ort
         ort.olix0r.net/role: prometheus
-      annotation:
+      annotations:
         {{- $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       securityContext:
