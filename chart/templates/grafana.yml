@@ -47,6 +47,7 @@ data:
           timeInterval: "5s"
         version: 1
         editable: true
+
 #   dashboards.yaml: |-
 #     apiVersion: 1
 #     providers:
@@ -59,6 +60,7 @@ data:
 #         options:
 #           path: /var/lib/grafana/dashboards
 #           homeDashboardId: linkerd-top-line
+
 ---
 kind: Service
 apiVersion: v1
