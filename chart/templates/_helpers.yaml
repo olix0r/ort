@@ -1,4 +1,4 @@
-{{- define "ort.linkerd" -}}
+{{- define "ort.linkerd" }}
 linkerd.io/inject: {{ .inject | default "enabled" }}
 {{-   range $k, $v := .config }}
 {{-     if $v }}

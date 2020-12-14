@@ -14,23 +14,20 @@ protocols:
   tcp:
     enabled: false
     port: 8090
-    loadFlags:
-      requestsPerClient: 100
+    loadFlags: {}
 
 load:
-  #log: info
+  log: ort=debug
   replicas: 1
-  threads: 3
+  threads: 1
   linkerd: {}
-  flags: {}
-    #requestsPerClient: 1
-    #concurrencyLimit: 0
-    #requestLimit: 0
-    #requestLimitWindow: 1s
-    #responseSizes: 0=1024,100=1048576
+  flags:
+    concurrencyLimit: 1
+    requestLimit: 1
+    requestLimitWindow: 1s
 
 server:
-  #log: debug
+  log: ort=debug
   threads: 1
   services: 1
   replicas: 1

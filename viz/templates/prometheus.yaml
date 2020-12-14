@@ -1,0 +1,198 @@
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ort-prometheus
+  labels:
+    app: ort
+    ort.olix0r.net/role: prometheus
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "nodes/proxy", "pods"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ort-prometheus
+  labels:
+    app: ort
+    ort.olix0r.net/role: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ort-prometheus
+subjects:
+- kind: ServiceAccount
+  name: prometheus
+  namespace: {{ .Release.Namespace }}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: prometheus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: prometheus
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: prometheus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: prometheus
+data:
+  prometheus.yml: |-
+    {{- if .Values.prometheus.globalConfig }}
+    global:
+      {{- toYaml .Values.prometheus.globalConfig | trim | nindent 6 }}
+    {{- end}}
+    scrape_configs:
+      - job_name: 'ort-load'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['{{ .Values.namespace }}']
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_label_ort_olix0r_net_role
+              - __meta_kubernetes_pod_container_port_name
+            action: keep
+            regex: ^load;admin-http$
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_annotation_linkerd_io_proxy_version]
+            action: replace
+            target_label: proxy_version
+          - source_labels: [__meta_kubernetes_pod_label_ort_olix0r_net_role]
+            action: replace
+            target_label: ort_role
+          - source_labels: [__meta_kubernetes_pod_label_ort_olix0r_net_protocol]
+            action: replace
+            target_label: ort_protocol
+          - source_labels: [__meta_kubernetes_pod_annotation_ort_olix0r_net_threads]
+            action: replace
+            target_label: ort_threads
+          - source_labels: [__meta_kubernetes_pod_annotation_ort_olix0r_net_request_limit]
+            action: replace
+            target_label: ort_request_limit
+          - source_labels: [__meta_kubernetes_pod_annotation_ort_olix0r_net_concurrency_limit]
+            action: replace
+            target_label: ort_concurrency_limit
+      - job_name: 'proxy'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['{{ .Values.namespace }}']
+        relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_container_name
+              - __meta_kubernetes_pod_container_port_name
+            action: keep
+            regex: ^linkerd-proxy;linkerd-admin$
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_annotation_linkerd_io_proxy_version]
+            action: replace
+            target_label: proxy_version
+          - source_labels: [__meta_kubernetes_pod_label_ort_olix0r_net_role]
+            action: replace
+            target_label: ort_role
+          - source_labels: [__meta_kubernetes_pod_label_ort_olix0r_net_protocol]
+            action: replace
+            target_label: ort_protocol
+          - source_labels: [__meta_kubernetes_pod_annotation_ort_olix0r_net_threads]
+            action: replace
+            target_label: ort_threads
+          - source_labels: [__meta_kubernetes_pod_annotation_ort_olix0r_net_request_limit]
+            action: replace
+            target_label: ort_request_limit
+          - source_labels: [__meta_kubernetes_pod_annotation_ort_olix0r_net_concurrency_limit]
+            action: replace
+            target_label: ort_concurrency_limit
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: prometheus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: prometheus
+spec:
+  type: LoadBalancer
+  selector:
+    app: ort
+    ort.olix0r.net/role: prometheus
+  ports:
+  - name: http
+    port: 9090
+    targetPort: 9090
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ort
+    ort.olix0r.net/role: prometheus
+  name: prometheus
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ort
+      ort.olix0r.net/role: prometheus
+  template:
+    metadata:
+      labels:
+        app: ort
+        ort.olix0r.net/role: prometheus
+    spec:
+      securityContext:
+        fsGroup: 65534
+      containers:
+      - args:
+        {{- range $key, $value := .Values.prometheus.flags }}
+        - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
+        {{- end }}
+        image: {{ .Values.prometheus.image }}
+        livenessProbe:
+          httpGet:
+            path: /-/healthy
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        name: prometheus
+        ports:
+        - containerPort: 9090
+          name: http
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 30
+          timeoutSeconds: 30
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+        volumeMounts:
+        - mountPath: /data
+          name: data
+        - mountPath: /etc/prometheus/prometheus.yml
+          name: prometheus
+          subPath: prometheus.yml
+          readOnly: true
+      serviceAccountName: prometheus
+      volumes:
+      - name: data
+        emptyDir: {}
+      - configMap:
+          name: prometheus
+        name: prometheus
