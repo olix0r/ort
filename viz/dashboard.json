@@ -16,7 +16,7 @@
     "gnetId": null,
     "graphTooltip": 1,
     "id": 1,
-    "iteration": 1607887992152,
+    "iteration": 1607926501374,
     "links": [],
     "panels": [
         {
@@ -34,8 +34,8 @@
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "http",
-                    "value": "http"
+                    "text": "grpc",
+                    "value": "grpc"
                 }
             },
             "title": "Load: $protocol",
@@ -92,13 +92,13 @@
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "http",
-                    "value": "http"
+                    "text": "grpc",
+                    "value": "grpc"
                 }
             },
             "targets": [
                 {
-                    "expr": "sum(rate(response_latency_seconds_count{ort_role=\"load\",ort_protocol=\"$protocol\"}[$__rate_interval])) by (pod)",
+                    "expr": "sum(rate(response_latency_seconds_count{ort_role=\"load\",ort_protocol=\"$protocol\"}[$__rate_interval]))",
                     "interval": "",
                     "legendFormat": "{{pod}}",
                     "refId": "B"
@@ -172,8 +172,8 @@
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "http",
-                    "value": "http"
+                    "text": "grpc",
+                    "value": "grpc"
                 }
             },
             "seriesOverrides": [],
@@ -278,8 +278,8 @@
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "http",
-                    "value": "http"
+                    "text": "grpc",
+                    "value": "grpc"
                 }
             },
             "seriesOverrides": [],
@@ -384,8 +384,8 @@
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "http",
-                    "value": "http"
+                    "text": "grpc",
+                    "value": "grpc"
                 }
             },
             "seriesOverrides": [],
@@ -517,8 +517,8 @@
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "http",
-                    "value": "http"
+                    "text": "grpc",
+                    "value": "grpc"
                 }
             },
             "seriesOverrides": [],
@@ -637,8 +637,8 @@
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "http",
-                    "value": "http"
+                    "text": "grpc",
+                    "value": "grpc"
                 }
             },
             "seriesOverrides": [],
@@ -749,8 +749,8 @@
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "http",
-                    "value": "http"
+                    "text": "grpc",
+                    "value": "grpc"
                 }
             },
             "seriesOverrides": [],
@@ -869,8 +869,8 @@
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "http",
-                    "value": "http"
+                    "text": "grpc",
+                    "value": "grpc"
                 }
             },
             "seriesOverrides": [],
@@ -943,13 +943,13 @@
             },
             "id": 57,
             "panels": [],
-            "repeatIteration": 1607887992152,
+            "repeatIteration": 1607926501374,
             "repeatPanelId": 8,
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
+                    "text": "http",
+                    "value": "http"
                 }
             },
             "title": "Load: $protocol",
@@ -1003,19 +1003,19 @@
                 "textMode": "auto"
             },
             "pluginVersion": "7.3.4",
-            "repeatIteration": 1607887992152,
+            "repeatIteration": 1607926501374,
             "repeatPanelId": 2,
             "repeatedByRow": true,
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
+                    "text": "http",
+                    "value": "http"
                 }
             },
             "targets": [
                 {
-                    "expr": "sum(rate(response_latency_seconds_count{ort_role=\"load\",ort_protocol=\"$protocol\"}[$__rate_interval])) by (pod)",
+                    "expr": "sum(rate(response_latency_seconds_count{ort_role=\"load\",ort_protocol=\"$protocol\"}[$__rate_interval]))",
                     "interval": "",
                     "legendFormat": "{{pod}}",
                     "refId": "B"
@@ -1086,14 +1086,14 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "repeatIteration": 1607887992152,
+            "repeatIteration": 1607926501374,
             "repeatPanelId": 55,
             "repeatedByRow": true,
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
+                    "text": "http",
+                    "value": "http"
                 }
             },
             "seriesOverrides": [],
@@ -1195,14 +1195,14 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "repeatIteration": 1607887992152,
+            "repeatIteration": 1607926501374,
             "repeatPanelId": 4,
             "repeatedByRow": true,
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
+                    "text": "http",
+                    "value": "http"
                 }
             },
             "seriesOverrides": [],
@@ -1304,14 +1304,14 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "repeatIteration": 1607887992152,
+            "repeatIteration": 1607926501374,
             "repeatPanelId": 3,
             "repeatedByRow": true,
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
+                    "text": "http",
+                    "value": "http"
                 }
             },
             "seriesOverrides": [],
@@ -1440,14 +1440,14 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "repeatIteration": 1607887992152,
+            "repeatIteration": 1607926501374,
             "repeatPanelId": 5,
             "repeatedByRow": true,
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
+                    "text": "http",
+                    "value": "http"
                 }
             },
             "seriesOverrides": [],
@@ -1563,14 +1563,14 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "repeatIteration": 1607887992152,
+            "repeatIteration": 1607926501374,
             "repeatPanelId": 6,
             "repeatedByRow": true,
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
+                    "text": "http",
+                    "value": "http"
                 }
             },
             "seriesOverrides": [],
@@ -1678,14 +1678,14 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "repeatIteration": 1607887992152,
+            "repeatIteration": 1607926501374,
             "repeatPanelId": 34,
             "repeatedByRow": true,
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
+                    "text": "http",
+                    "value": "http"
                 }
             },
             "seriesOverrides": [],
@@ -1801,14 +1801,14 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "repeatIteration": 1607887992152,
+            "repeatIteration": 1607926501374,
             "repeatPanelId": 51,
             "repeatedByRow": true,
             "scopedVars": {
                 "protocol": {
                     "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
+                    "text": "http",
+                    "value": "http"
                 }
             },
             "seriesOverrides": [],
@@ -2492,7 +2492,7 @@
     },
     "timepicker": {},
     "timezone": "",
-    "title": "Topology Overview",
+    "title": "Ort",
     "uid": "hDSvgE0Gk",
-    "version": 65
+    "version": 1
 }
