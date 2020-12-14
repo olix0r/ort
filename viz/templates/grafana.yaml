@@ -1,0 +1,170 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: grafana
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: grafana
+data:
+  grafana.ini: |-
+    instance_name = ort-grafana
+
+    [server]
+    root_url = %(protocol)s://%(domain)s:/
+
+    [auth]
+    disable_login_form = true
+
+    [auth.anonymous]
+    enabled = true
+    org_role = Editor
+
+    [auth.basic]
+    enabled = false
+
+    [analytics]
+    check_for_updates = false
+
+    [panels]
+    disable_sanitize_html = true
+
+  datasources.yaml: |-
+    apiVersion: 1
+    datasources:
+      - name: prometheus
+        type: prometheus
+        access: proxy
+        orgId: 1
+        url: http://prometheus:9090
+        isDefault: true
+        jsonData:
+          timeInterval: "5s"
+        version: 1
+        editable: true
+
+  dashboards.yaml: |-
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: true
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards
+          homeDashboardId: ort
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboards
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: grafana
+data:
+{{ (.Files.Glob "dashboards/*.json").AsConfig | indent 2 }}
+
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: grafana
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: grafana
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: grafana
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: grafana
+spec:
+  type: LoadBalancer
+  selector:
+    app: ort
+    ort.olix0r.net/role: grafana
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ort
+    ort.olix0r.net/role: grafana
+  name: grafana
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ort
+      ort.olix0r.net/role: grafana
+  template:
+    metadata:
+      labels:
+        app: ort
+        ort.olix0r.net/role: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: {{ .Values.grafana.image }}
+          env:
+            - name: GF_PATHS_DATA
+              value: /data
+            # Force using the go-based DNS resolver instead of the OS' to avoid failures in some environments
+            # see https://github.com/grafana/grafana/issues/20096
+            - name: GODEBUG
+              value: netdns=go
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+          ports:
+            - containerPort: 3000
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+          securityContext:
+            runAsUser: 472
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards
+            - name: etc-grafana
+              mountPath: /etc/grafana
+              readOnly: true
+      serviceAccountName: grafana
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: etc-grafana
+          configMap:
+            name: grafana
+            items:
+              - key: grafana.ini
+                path: grafana.ini
+              - key: datasources.yaml
+                path: provisioning/datasources/datasources.yaml
+              - key: dashboards.yaml
+                path: provisioning/dashboards/dashboards.yaml
+        - name: dashboards
+          configMap:
+            name: dashboards
+            items:
+              - key: ort.json
+                path: ort.json

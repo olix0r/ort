@@ -5,6 +5,7 @@
 {{- $linkerd := deepCopy .Values.linkerd | merge $load.linkerd }}
 {{- range $protoName, $proto := .Values.protocols }}
 {{-   if $proto.enabled }}
+{{-     $flags := deepCopy $proto.loadFlags | merge $load.flags }}
 ---
 kind: ServiceAccount
 apiVersion: v1
@@ -39,7 +40,11 @@ spec:
         ort.olix0r.net/role: load
         ort.olix0r.net/protocol: {{ $protoName }}
       annotations:
-{{ $linkerd | include "ort.linkerd" | indent 8 }}
+        ort.olix0r.net/threads: {{ quote $load.threads }}
+        {{- range $f, $v := $flags }}
+        ort.olix0r.net/{{ kebabcase $f }}: {{ quote $v }}
+        {{- end }}
+        {{- $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       serviceAccount: load-{{ $protoName }}
       containers:
@@ -57,10 +62,13 @@ spec:
             - --threads={{ $load.threads }}
           {{- end }}
             - load
-          {{- $flags := deepCopy $proto.loadFlags | merge $load.flags }}
           {{- range $f, $v := $flags }}
             - --{{ kebabcase $f }}={{ $v }}
           {{- end }}
             - {{ printf "%s://logical:%d" $protoName (int $proto.port) }}
+          ports:
+            - protocol: TCP
+              containerPort: 8000
+              name: admin-http
 {{-   end }}
 {{- end }}

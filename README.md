@@ -20,29 +20,31 @@ SUBCOMMANDS:
     server    Load target
 ```
 
-## Compiling
+## Running in Kubernetes
 
 ```sh
-:; cargo check
-:; cargo test
-:; cargo build --release
-:; docker buildx build .
+## Create a cluster (if necessary)
+:; k3d cluster create
+## Install a minimal Linkerd control plane
+:; linkerd install --config=./linkerd.yaml |kubectl apply -f -
+## Run a viz stack with a default dashboard
+:; helm install ort-viz ./viz --create-namespace -n ort-viz
+## Run a topology
+:; helm install ort ./chart --create-namespace -n ort
+## Upgrade the toplogy with a custom setup
+:; helm upgrade ort ./chart --namespace ort \
+    --set load.threads=5 \
+    --set load.flags.concurrencyLimit=10 \
+    --set load.flags.requestLimit=300 \
+    --set server.services=3 \
+    --set linkerd.config.proxyLogLevel=linkerd=debug\\,info \
+    --set linkerd.config.proxyImage=ghcr.io/olix0r/l2-proxy \
+    --set linkerd.config.proxyVersion=detect.0c823a6a
+## Get the Grafana addresst
+:; echo "$(kubectl get -n ort-viz svc/grafana -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):3000"
+172.23.0.2:3000
 ```
-
-## Running
-
-```sh
-:; RUST_LOG=ort=debug cargo run -- server
-:; RUST_LOG=ort=debug cargo run -- load grpc://localhost:8070 http://localhost:8080
-```
-
-## Deploying
-
-```sh
-:; helm install ort . --namespace ort --create-namespace
-```
-
-See the <./values.yml>
+See <./chart/values.yml> and  <./viz/values.yml>
 
 ## License
 

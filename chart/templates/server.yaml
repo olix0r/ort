@@ -102,7 +102,7 @@ spec:
         ort.olix0r.net/role: server
         ort.olix0r.net/instance: {{ quote $i }}
       annotations:
-{{ $linkerd | include "ort.linkerd" | indent 8 }}
+        {{- $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       serviceAccount: {{ $name }}
       containers:
@@ -121,7 +121,9 @@ spec:
           {{- end }}
             - server
           {{- range $f, $v := $srv.flags }}
+          {{- if ne $f "adminAddr" }}
             - --{{ kebabcase $f }}={{ $v }}
+          {{- end }}
           {{- end }}
           ports:
           {{- range $name, $config := $protocols }}
