@@ -1,28 +1,61 @@
-{{- $ns := .Release.Namespace }}
-{{- $linkerd := deepCopy .Values.linkerd | merge .Values.viz.prometheus.linkerd }}
-{{- if .Values.viz.enabled }}
-{{-   with .Values.viz.prometheus }}
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ort-prometheus
+  labels:
+    app: ort
+    ort.olix0r.net/role: prometheus
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "nodes/proxy", "pods"]
+  verbs: ["get", "list", "watch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ort-prometheus
+  labels:
+    app: ort
+    ort.olix0r.net/role: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ort-prometheus
+subjects:
+- kind: ServiceAccount
+  name: prometheus
+  namespace: {{ .Release.Namespace }}
+---
+kind: ServiceAccount
+apiVersion: v1
+metadata:
+  name: prometheus
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ort
+    ort.olix0r.net/role: prometheus
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: prometheus
-  namespace: {{ $ns }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app: ort
     ort.olix0r.net/role: prometheus
 data:
   prometheus.yml: |-
-    {{- if .globalConfig }}
+    {{- if .Values.prometheus.globalConfig }}
     global:
-      {{- toYaml .globalConfig | trim | nindent 6 }}
+      {{- toYaml .Values.prometheus.globalConfig | trim | nindent 6 }}
     {{- end}}
     scrape_configs:
       - job_name: 'ort-load'
         kubernetes_sd_configs:
           - role: pod
             namespaces:
-              names: ['{{ $ns }}']
+              names: ['{{ .Values.namespace }}']
         relabel_configs:
           - source_labels:
               - __meta_kubernetes_pod_label_ort_olix0r_net_role
@@ -54,7 +87,7 @@ data:
         kubernetes_sd_configs:
           - role: pod
             namespaces:
-              names: ['{{ $ns }}']
+              names: ['{{ .Values.namespace }}']
         relabel_configs:
           - source_labels:
               - __meta_kubernetes_pod_container_name
@@ -87,7 +120,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: prometheus
-  namespace: {{ $ns }}
+  namespace: {{ .Release.Namespace }}
   labels:
     app: ort
     ort.olix0r.net/role: prometheus
@@ -108,7 +141,7 @@ metadata:
     app: ort
     ort.olix0r.net/role: prometheus
   name: prometheus
-  namespace: {{ $ns }}
+  namespace: {{ .Release.Namespace }}
 spec:
   replicas: 1
   selector:
@@ -120,17 +153,15 @@ spec:
       labels:
         app: ort
         ort.olix0r.net/role: prometheus
-      annotations:
-        {{- $linkerd | include "ort.linkerd" | indent 8 }}
     spec:
       securityContext:
         fsGroup: 65534
       containers:
       - args:
-        {{- range $key, $value := .flags }}
+        {{- range $key, $value := .Values.prometheus.flags }}
         - --{{ $key }}{{ if $value }}={{ $value }}{{ end }}
         {{- end }}
-        image: {{ .image }}
+        image: {{ .Values.prometheus.image }}
         livenessProbe:
           httpGet:
             path: /-/healthy
@@ -165,5 +196,3 @@ spec:
       - configMap:
           name: prometheus
         name: prometheus
-{{-   end }}
-{{- end }}
