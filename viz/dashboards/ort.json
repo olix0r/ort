@@ -15,7 +15,7 @@
     "editable": true,
     "gnetId": null,
     "graphTooltip": 1,
-    "iteration": 1607997047398,
+    "iteration": 1608055513568,
     "links": [],
     "panels": [
         {
@@ -91,7 +91,7 @@
             },
             "lines": true,
             "linewidth": 2,
-            "nullPointMode": "null",
+            "nullPointMode": "null as zero",
             "options": {
                 "alertThreshold": true
             },
@@ -699,7 +699,7 @@
             },
             "lines": true,
             "linewidth": 2,
-            "nullPointMode": "null",
+            "nullPointMode": "null as zero",
             "options": {
                 "alertThreshold": true
             },
@@ -740,7 +740,7 @@
             "title": "TCP Connections",
             "tooltip": {
                 "shared": true,
-                "sort": 1,
+                "sort": 2,
                 "value_type": "individual"
             },
             "type": "graph",
@@ -782,7 +782,7 @@
                 "h": 1,
                 "w": 24,
                 "x": 0,
-                "y": 40
+                "y": 20
             },
             "id": 16,
             "title": "Servers",
@@ -806,7 +806,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 41
+                "y": 21
             },
             "hiddenSeries": false,
             "id": 56,
@@ -821,7 +821,7 @@
             },
             "lines": true,
             "linewidth": 3,
-            "nullPointMode": "null",
+            "nullPointMode": "null as zero",
             "options": {
                 "alertThreshold": true
             },
@@ -849,7 +849,7 @@
             "title": "RPS",
             "tooltip": {
                 "shared": true,
-                "sort": 0,
+                "sort": 2,
                 "value_type": "individual"
             },
             "type": "graph",
@@ -903,7 +903,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 41
+                "y": 21
             },
             "hiddenSeries": false,
             "id": 57,
@@ -1018,7 +1018,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 47
+                "y": 27
             },
             "hiddenSeries": false,
             "id": 25,
@@ -1033,7 +1033,7 @@
             },
             "lines": true,
             "linewidth": 2,
-            "nullPointMode": "null",
+            "nullPointMode": "null as zero",
             "options": {
                 "alertThreshold": true
             },
@@ -1115,7 +1115,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 47
+                "y": 27
             },
             "hiddenSeries": false,
             "id": 26,
@@ -1130,7 +1130,7 @@
             },
             "lines": true,
             "linewidth": 2,
-            "nullPointMode": "null",
+            "nullPointMode": "null as zero",
             "options": {
                 "alertThreshold": true
             },
@@ -1219,7 +1219,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 53
+                "y": 33
             },
             "hiddenSeries": false,
             "id": 52,
@@ -1334,7 +1334,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 53
+                "y": 33
             },
             "hiddenSeries": false,
             "id": 54,
@@ -1349,7 +1349,7 @@
             },
             "lines": true,
             "linewidth": 2,
-            "nullPointMode": "null",
+            "nullPointMode": "null as zero",
             "options": {
                 "alertThreshold": true
             },
@@ -1420,7 +1420,7 @@
             }
         }
     ],
-    "refresh": "30s",
+    "refresh": "10s",
     "schemaVersion": 26,
     "style": "dark",
     "tags": [],
@@ -1460,12 +1460,12 @@
         ]
     },
     "time": {
-        "from": "now-5m",
+        "from": "now-30m",
         "to": "now"
     },
     "timepicker": {},
     "timezone": "",
     "title": "Ort",
     "uid": "hDSvgE0Gk",
-    "version": 1
+    "version": 2
 }
