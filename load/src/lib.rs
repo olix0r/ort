@@ -90,20 +90,20 @@ impl Cmd {
             target,
         } = self;
 
-        let concurrency_limit = concurrency_limit.map(Semaphore::new).map(Arc::new);
+        let concurrency = concurrency_limit.map(Semaphore::new).map(Arc::new);
         let rate_limit = RateLimit::spawn(request_limit, request_limit_window);
 
         let runner = Runner::new(
             clients.unwrap_or(threads),
             total_requests,
-            (concurrency_limit, rate_limit),
+            (concurrency, rate_limit),
             Arc::new(response_latency),
             Arc::new(response_size),
         );
 
         let (connect, report) = {
             let client = (
-                MakeHttp::new(connect_timeout),
+                MakeHttp::new(concurrency_limit, connect_timeout),
                 MakeGrpc::default(),
                 MakeTcp::new(100_000),
             );

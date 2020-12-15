@@ -4,6 +4,7 @@ use tokio::time::Duration;
 
 #[derive(Clone)]
 pub struct MakeHttp {
+    concurrency: Option<usize>,
     connect_timeout: Duration,
 }
 
@@ -14,8 +15,11 @@ pub struct Http {
 }
 
 impl MakeHttp {
-    pub fn new(connect_timeout: Duration) -> Self {
-        Self { connect_timeout }
+    pub fn new(concurrency: Option<usize>, connect_timeout: Duration) -> Self {
+        Self {
+            concurrency,
+            connect_timeout,
+        }
     }
 }
 
@@ -28,10 +32,14 @@ impl MakeOrt<http::Uri> for MakeHttp {
         connect.set_connect_timeout(Some(self.connect_timeout));
         connect.set_nodelay(true);
         connect.set_reuse_address(true);
-        Ok(Http {
-            target,
-            client: hyper::Client::builder().build(connect),
-        })
+
+        let mut builder = hyper::Client::builder();
+        if let Some(c) = self.concurrency {
+            builder.pool_max_idle_per_host(c);
+        }
+        let client = builder.build(connect);
+
+        Ok(Http { target, client })
     }
 }
 
