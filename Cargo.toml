@@ -15,6 +15,7 @@ version = "0.1.13"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
 publish = false
+license = "Apache-2.0"
 
 [features]
 grpc-fmt = ["ort-load/grpc-fmt", "ort-server/grpc-fmt"]
@@ -24,6 +25,6 @@ num_cpus = "1"
 ort-load = { path = "./load" }
 ort-server = { path = "./server" }
 structopt = "0.3"
-tokio = { version = "0.2", features = ["macros", "rt-threaded", "time"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 tracing-subscriber = "0.2"
 tracing = "0.1"

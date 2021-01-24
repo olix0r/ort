@@ -76,7 +76,7 @@ impl<T: FromStr + Default + Into<u64>> FromStr for Distribution<T> {
                         .map_err(|_| InvalidDistribution::InvalidValue)?;
                     (p, v)
                 }
-                _ => return Err(InvalidDistribution::InvalidPercentile)?,
+                _ => return Err(InvalidDistribution::InvalidPercentile),
             };
             Self::build(Some(pv))
         } else {
@@ -93,7 +93,7 @@ impl<T: FromStr + Default + Into<u64>> FromStr for Distribution<T> {
                             .map_err(|_| InvalidDistribution::InvalidValue)?;
                         pairs.push((p, v));
                     }
-                    _ => return Err(InvalidDistribution::InvalidPercentile)?,
+                    _ => return Err(InvalidDistribution::InvalidPercentile),
                 }
             }
             Self::build(pairs)
@@ -209,7 +209,7 @@ impl std::convert::TryFrom<f32> for Percentile {
     type Error = InvalidPercentile;
 
     fn try_from(v: f32) -> Result<Self, Self::Error> {
-        if v < 0.0 || v > 100.0 {
+        if !(0.0..=100.0).contains(&v) {
             return Err(InvalidPercentile(()));
         }
         let adjusted = v * (Self::FACTOR as f32);
@@ -231,7 +231,7 @@ impl std::convert::TryFrom<u32> for Percentile {
 
 impl rand::distributions::Distribution<Percentile> for rand::distributions::Standard {
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Percentile {
-        Percentile(rng.gen_range(0, 100_0000))
+        Percentile(rng.gen_range(0..=100_0000))
     }
 }
 

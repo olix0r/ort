@@ -3,7 +3,7 @@
 mod replier;
 
 use self::replier::Replier;
-use linkerd2_drain as drain;
+use linkerd_drain as drain;
 use ort_core::latency;
 use ort_grpc::server as grpc;
 use ort_http::server as http;

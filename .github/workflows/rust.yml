@@ -1,0 +1,61 @@
+name: Rust PR
+
+on:
+  push:
+    branches:
+      - master
+  pull_request: {}
+
+jobs:
+  fmt:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    container:
+      image: docker://rust:1.49.0-buster
+    steps:
+      - uses: actions/checkout@v2
+      - run: rustup component add rustfmt
+      - run: cargo fmt --all -- --check
+
+  audit:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        checks:
+          - advisories
+          - bans licenses sources
+    # Prevent sudden announcement of a new advisory from failing Ci.
+    continue-on-error: ${{ matrix.checks == 'advisories' }}
+    steps:
+    - uses: actions/checkout@v2
+    - uses: EmbarkStudios/cargo-deny-action@v1
+      with:
+        command: check ${{ matrix.checks }}
+
+  clippy:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    container:
+      image: docker://rust:1.49.0-buster
+    steps:
+      - uses: actions/checkout@v2
+      - run: rustup component add clippy rustfmt
+      - run: cargo clippy --all-features --all-targets
+
+  check:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    container:
+      image: docker://rust:1.49.0-buster
+    steps:
+      - uses: actions/checkout@v2
+      # Iterate through all subcrates to ensure each compiles indpendently.
+      - run: for d in $(for toml in $(find . -name Cargo.toml) ; do echo ${toml%/*} ; done | sort -r ) ; do echo "# $d" ; (cd $d ; cargo check --all-targets) ; done
+
+  test:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: cargo test --all

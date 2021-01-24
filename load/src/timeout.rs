@@ -31,8 +31,10 @@ where
 
     async fn make_ort(&mut self, t: T) -> Result<Self::Ort, Error> {
         let inner = self.inner.make_ort(t).await?;
-        let timeout = self.timeout.clone();
-        Ok(RequestTimeout { inner, timeout })
+        Ok(RequestTimeout {
+            inner,
+            timeout: self.timeout,
+        })
     }
 }
 

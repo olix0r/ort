@@ -27,10 +27,9 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     let Ort { threads, cmd } = Ort::from_args();
 
     let threads = threads.unwrap_or_else(num_cpus::get);
-    let mut rt = rt::Builder::new()
-        .threaded_scheduler()
+    let rt = rt::Builder::new_multi_thread()
         .enable_all()
-        .core_threads(threads)
+        .worker_threads(threads)
         .build()?;
 
     match cmd {

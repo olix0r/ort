@@ -4,21 +4,22 @@ version = "0.1.13"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
 publish = false
+license = "Apache-2.0"
 
 [features]
 grpc-fmt = ["ort-grpc/rustfmt"]
 
 [dependencies]
 async-trait = "0.1"
-bytes = "0.5"
+bytes = "1"
 futures = "0.3"
-linkerd2-drain = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main" }
+linkerd-drain = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main" }
 ort-core = { path = "../core" }
 ort-grpc = { path = "../grpc" }
 ort-http = { path = "../http" }
 ort-tcp = { path = "../tcp" }
-rand =  "0.7"
+rand =  "0.8"
 structopt = "0.3"
-tokio = { version = "0.2", features = ["macros", "signal", "time"] }
-tonic = { version = "0.3", default-features = false }
+tokio = { version = "1", features = ["macros", "signal", "time"] }
+tonic = { version = "0.4", default-features = false }
 tracing = "0.1"

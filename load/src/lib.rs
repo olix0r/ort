@@ -206,7 +206,7 @@ impl FromStr for Target {
 
     fn from_str(s: &str) -> Result<Target, Self::Err> {
         let uri = http::Uri::from_str(s)?;
-        match uri.clone().scheme_str() {
+        match uri.scheme_str() {
             Some("grpc") => {
                 let uri = Self::uri_default_port(uri, 8070)?;
                 Ok(Target::Grpc(uri))
@@ -219,7 +219,7 @@ impl FromStr for Target {
                 let uri = Self::uri_default_port(uri, 8090)?;
                 match uri.authority() {
                     Some(a) => Ok(Target::Tcp(a.to_string())),
-                    None => return Err(InvalidTarget(uri).into()),
+                    None => Err(InvalidTarget(uri).into()),
                 }
             }
             _ => Err(InvalidTarget(uri).into()),

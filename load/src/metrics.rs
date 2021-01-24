@@ -1,4 +1,4 @@
-use linkerd2_metrics::{metrics, Counter, FmtMetrics, MillisAsSeconds, Summary};
+use linkerd_metrics::{metrics, Counter, FmtMetrics, MillisAsSeconds, Summary};
 use ort_core::{Error, MakeOrt, Ort, Reply, Spec};
 use std::{fmt, sync::Arc};
 use tokio::time;

@@ -1,5 +1,5 @@
 use crate::metrics::Report;
-use linkerd2_metrics::Serve;
+use linkerd_metrics::Serve;
 use std::{io, net::SocketAddr};
 
 #[derive(Clone)]

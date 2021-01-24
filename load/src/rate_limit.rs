@@ -53,7 +53,12 @@ impl limit::Acquire for RateLimit {
     type Handle = Permit;
 
     async fn acquire(&self) -> Permit {
-        let p = self.0.clone().acquire_owned().await;
+        let p = self
+            .0
+            .clone()
+            .acquire_owned()
+            .await
+            .expect("Semaphore must not close");
         Permit(Some(p))
     }
 }
