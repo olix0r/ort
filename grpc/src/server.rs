@@ -76,7 +76,7 @@ impl<O: Ort + Sync> ort_server::Ort for Server<O> {
                     16 => tonic::Code::Unauthenticated,
                     _ => tonic::Code::InvalidArgument,
                 };
-                return Err(tonic::Status::new(code, message).into());
+                return Err(tonic::Status::new(code, message));
             }
         };
 

@@ -97,7 +97,7 @@ impl<L: Acquire> Runner<L> {
             tasks.push(client);
         }
 
-        while let Some(_) = tasks.next().await {}
+        while tasks.next().await.is_some() {}
 
         Ok(())
     }

@@ -110,7 +110,7 @@ where
                         }
                         None => {
                             debug!(in_flight=in_flight.len(), "Server closed");
-                            if in_flight.len() == 0 {
+                            if in_flight.is_empty() {
                                 return Ok(());
                             } else {
                                 return Err(io::Error::new(
@@ -158,15 +158,15 @@ where
     req_tx
 }
 
+type Channel<Req, Rsp> = mpsc::Receiver<(Req, oneshot::Sender<Rsp>)>;
+type JoinHandle = tokio::task::JoinHandle<io::Result<()>>;
+
 pub fn spawn_server<Req, Rsp, R, W>(
     mut read: R,
     mut write: W,
     drain: Drain,
     buffer_capacity: usize,
-) -> (
-    mpsc::Receiver<(Req, oneshot::Sender<Rsp>)>,
-    tokio::task::JoinHandle<io::Result<()>>,
-)
+) -> (Channel<Req, Rsp>, JoinHandle)
 where
     Req: Send + 'static,
     Rsp: Send + 'static,
@@ -174,8 +174,6 @@ where
     W: Sink<Frame<Rsp>, Error = io::Error> + Send + Unpin + 'static,
 {
     let (tx, rx) = mpsc::channel(buffer_capacity);
-
-    let drain = drain.clone();
 
     let handle = tokio::spawn(async move {
         tokio::pin! {
@@ -288,12 +286,10 @@ impl<D: Decoder> Decoder for FramedDecode<D> {
         };
 
         match self.inner.decode(src)? {
-            Some(value) => {
-                return Ok(Some(Frame { id, value }));
-            }
+            Some(value) => Ok(Some(Frame { id, value })),
             None => {
                 self.state = DecodeState::Head { id };
-                return Ok(None);
+                Ok(None)
             }
         }
     }

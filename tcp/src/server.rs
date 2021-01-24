@@ -32,7 +32,7 @@ impl<O: Ort> Server<O> {
             tokio::select! {
                 shutdown = (&mut closed) => {
                     debug!("Letting all connections complete before shutdown");
-                    while let Some(_) = serving.next().await {}
+                    while serving.next().await.is_some() {}
                     drop(shutdown);
                     return Ok(());
                 }

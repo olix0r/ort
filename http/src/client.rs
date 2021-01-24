@@ -62,7 +62,7 @@ impl Ort for Http {
         }
 
         uri = {
-            let latency_ms = Duration::try_from(latency).unwrap_or_default().as_millis() as i64;
+            let latency_ms = latency.as_millis() as i64;
 
             tracing::trace!(latency_ms, response_size);
             uri.path_and_query(
