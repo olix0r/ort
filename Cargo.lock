@@ -597,7 +597,7 @@ checksum = "13bd41f508810a131401606d54ac32a467c97172d74ba7662562ebba5ad07fa0"
 
 [[package]]
 name = "ort"
-version = "0.1.13"
+version = "0.1.14"
 dependencies = [
  "num_cpus",
  "ort-load",
@@ -657,7 +657,7 @@ dependencies = [
 
 [[package]]
 name = "ort-load"
-version = "0.1.13"
+version = "0.1.14"
 dependencies = [
  "async-trait",
  "futures",
@@ -680,7 +680,7 @@ dependencies = [
 
 [[package]]
 name = "ort-server"
-version = "0.1.13"
+version = "0.1.14"
 dependencies = [
  "async-trait",
  "bytes",
