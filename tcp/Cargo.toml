@@ -16,3 +16,6 @@ tokio = { version = "1", features = ["io-util", "macros", "net", "signal", "sync
 tokio-util = { version = "0.6", features = ["codec"] }
 tracing = "0.1"
 tracing-futures = "0.2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt"] }
