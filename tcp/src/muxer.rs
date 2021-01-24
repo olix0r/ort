@@ -1,7 +1,7 @@
 use crate::next_or_pending;
 use bytes::{Buf, BufMut, BytesMut};
 use futures::{prelude::*, stream::FuturesUnordered};
-use linkerd2_drain::Watch as Drain;
+use linkerd_drain::Watch as Drain;
 use std::collections::HashMap;
 use tokio::{
     io,
@@ -68,7 +68,7 @@ where
                 tokio::select! {
                     // Read requests from the stream and write them on the socket.
                     // Stash the response oneshot for when the response is read.
-                    req = req_rx.next() => match req {
+                    req = req_rx.recv() => match req {
                         Some((value, rsp_tx)) => {
                             let id = next_id;
                             next_id += 1;
@@ -173,13 +173,13 @@ where
     R: Stream<Item = io::Result<Frame<Req>>> + Send + Unpin + 'static,
     W: Sink<Frame<Rsp>, Error = io::Error> + Send + Unpin + 'static,
 {
-    let (mut tx, rx) = mpsc::channel(buffer_capacity);
+    let (tx, rx) = mpsc::channel(buffer_capacity);
 
     let drain = drain.clone();
 
     let handle = tokio::spawn(async move {
         tokio::pin! {
-            let closed = drain.signal();
+            let closed = drain.signaled();
         }
 
         let mut last_id = 0u64;

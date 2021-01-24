@@ -7,11 +7,11 @@ publish = false
 
 [dependencies]
 async-trait = "0.1"
-bytes = "0.5"
+bytes = "1"
 futures = "0.3"
-linkerd2-drain = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main" }
+linkerd-drain = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main" }
 ort-core = { path = "../core" }
-tokio = { version = "0.2", features = ["io-util", "macros", "net", "signal", "sync", "time"] }
-tokio-util = { version = "0.3.1", features = ["codec"] }
+tokio = { version = "1", features = ["io-util", "macros", "net", "signal", "sync", "time"] }
+tokio-util = { version = "0.6", features = ["codec"] }
 tracing = "0.1"
 tracing-futures = "0.2"

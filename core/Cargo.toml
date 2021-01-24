@@ -10,11 +10,11 @@ deser = ["serde", "bytes/serde"]
 
 [dependencies]
 async-trait = "0.1"
-bytes = "0.5"
+bytes = "1"
 indexmap = "1.0"
-rand = "0.7"
+rand = "0.8"
 regex = "1"
-serde = { version = "1.0", features = ["derive"], optional = true }
-tokio = { version = "0.2", features = ["macros", "sync", "time"] }
+serde = { version = "1", features = ["derive"], optional = true }
+tokio = { version = "1", features = ["macros", "sync", "time"] }
 tracing = "0.1"
 #tracing-futures = "0.2"

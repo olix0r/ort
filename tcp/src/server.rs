@@ -1,6 +1,6 @@
 use crate::{muxer, next_or_pending, preface, ReplyCodec, SpecCodec};
 use futures::{prelude::*, stream::FuturesUnordered};
-use linkerd2_drain::Watch as Drain;
+use linkerd_drain::Watch as Drain;
 use ort_core::{Error, Ort};
 use std::net::SocketAddr;
 use tokio_util::codec::{FramedRead, FramedWrite};
@@ -22,10 +22,10 @@ impl<O: Ort> Server<O> {
 
     pub async fn serve(self, addr: SocketAddr, drain: Drain) -> Result<(), Error> {
         let mut serving = FuturesUnordered::new();
-        let mut lis = tokio::net::TcpListener::bind(addr).await?;
+        let lis = tokio::net::TcpListener::bind(addr).await?;
 
         tokio::pin! {
-            let closed = drain.clone().signal();
+            let closed = drain.clone().signaled();
         }
 
         loop {
@@ -67,7 +67,7 @@ impl<O: Ort> Server<O> {
 
                     let server = tokio::spawn(async move {
                         tokio::pin! {
-                            let closed = drain.signal();
+                            let closed = drain.signaled();
                         }
 
                         let mut in_flight = FuturesUnordered::new();
@@ -85,7 +85,7 @@ impl<O: Ort> Server<O> {
                                     trace!("Response completed");
                                 }
 
-                                next = rx.next() => match next {
+                                next = rx.recv() => match next {
                                     None => {
                                         debug!("Client closed; draining in-flight requests");
                                         while let Some(()) = in_flight.next().await {};

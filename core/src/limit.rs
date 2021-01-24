@@ -81,6 +81,6 @@ impl Acquire for Arc<Semaphore> {
     type Handle = OwnedSemaphorePermit;
 
     async fn acquire(&self) -> Self::Handle {
-        self.clone().acquire_owned().await
+        self.clone().acquire_owned().await.expect("Semaphore must not be closed")
     }
 }

@@ -9,9 +9,9 @@ publish = false
 async-trait = "0.1"
 futures = "0.3"
 http = "0.2"
-hyper = "0.13.3"
-linkerd2-drain = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main" }
+hyper = "0.14"
+linkerd-drain = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main" }
 ort-core = { path = "../core" }
-tokio = { version = "0.2", features = ["time"] }
+tokio = { version = "1", features = ["time"] }
 tracing = "0.1"
 tracing-futures = "0.2"

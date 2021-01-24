@@ -231,7 +231,7 @@ impl std::convert::TryFrom<u32> for Percentile {
 
 impl rand::distributions::Distribution<Percentile> for rand::distributions::Standard {
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Percentile {
-        Percentile(rng.gen_range(0, 100_0000))
+        Percentile(rng.gen_range(0..=100_0000))
     }
 }
 
