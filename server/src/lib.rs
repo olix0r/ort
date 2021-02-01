@@ -29,6 +29,9 @@ pub struct Cmd {
 
     #[structopt(short, long, default_value = "0.0.0.0:8090")]
     tcp_addr: SocketAddr,
+
+    #[structopt(short, long)]
+    grpc_concurrency_limit: Option<usize>,
 }
 
 impl Cmd {
@@ -36,7 +39,11 @@ impl Cmd {
         let replier = Replier::new(self.response_latency);
 
         let (close, closed) = drain::channel();
-        tokio::spawn(grpc::Server::new(replier.clone()).serve(self.grpc_addr, closed.clone()));
+        tokio::spawn(
+            grpc::Server::new(replier.clone())
+                .concurrency_limit(self.grpc_concurrency_limit)
+                .serve(self.grpc_addr, closed.clone()),
+        );
         tokio::spawn(http::Server::new(replier.clone()).serve(self.http_addr, closed.clone()));
         tokio::spawn(tcp::Server::new(replier).serve(self.tcp_addr, closed));
 
