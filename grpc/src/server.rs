@@ -9,6 +9,7 @@ use std::convert::TryInto;
 pub struct Server<O> {
     inner: O,
     window_size: u32,
+    max_concurrent_streams: Option<u32>,
 }
 
 impl<O: Ort + Sync> Server<O> {
@@ -16,15 +17,26 @@ impl<O: Ort + Sync> Server<O> {
         Self {
             inner,
             window_size: 2u32.pow(31) - 1,
+            max_concurrent_streams: None,
+        }
+    }
+
+    pub fn max_concurrent_streams(self, max_concurrent_streams: Option<u32>) -> Self {
+        Self {
+            max_concurrent_streams,
+            ..self
         }
     }
 
     pub async fn serve(self, addr: std::net::SocketAddr, drain: Drain) -> Result<(), Error> {
         let (close, closed) = tokio::sync::oneshot::channel();
 
+        let mut srv = tonic::transport::Server::builder()
+            .initial_connection_window_size(self.window_size)
+            .max_concurrent_streams(self.max_concurrent_streams);
+
         tokio::pin! {
-            let srv = tonic::transport::Server::builder()
-                .initial_connection_window_size(self.window_size)
+            let srv = srv
                 .add_service(ort_server::OrtServer::new(self))
                 .serve_with_shutdown(addr, closed.map(|_| ()));
         }
