@@ -9,7 +9,7 @@ use std::convert::TryInto;
 pub struct Server<O> {
     inner: O,
     window_size: u32,
-    concurrency_limit: Option<usize>,
+    max_concurrent_streams: Option<u32>,
 }
 
 impl<O: Ort + Sync> Server<O> {
@@ -17,13 +17,13 @@ impl<O: Ort + Sync> Server<O> {
         Self {
             inner,
             window_size: 2u32.pow(31) - 1,
-            concurrency_limit: None,
+            max_concurrent_streams: None,
         }
     }
 
-    pub fn concurrency_limit(self, concurrency_limit: Option<usize>) -> Self {
+    pub fn max_concurrent_streams(self, max_concurrent_streams: Option<u32>) -> Self {
         Self {
-            concurrency_limit,
+            max_concurrent_streams,
             ..self
         }
     }
@@ -31,11 +31,9 @@ impl<O: Ort + Sync> Server<O> {
     pub async fn serve(self, addr: std::net::SocketAddr, drain: Drain) -> Result<(), Error> {
         let (close, closed) = tokio::sync::oneshot::channel();
 
-        let mut srv =
-            tonic::transport::Server::builder().initial_connection_window_size(self.window_size);
-        if let Some(limit) = self.concurrency_limit {
-            srv = srv.concurrency_limit_per_connection(limit);
-        }
+        let mut srv = tonic::transport::Server::builder()
+            .initial_connection_window_size(self.window_size)
+            .max_concurrent_streams(self.max_concurrent_streams);
 
         tokio::pin! {
             let srv = srv
