@@ -37,11 +37,6 @@ deny = []
 skip = [
     # Pulled in by clap
     { name = "ansi_term", version = "0.11.0" },
-    # Pulled in by log v0.4.13
-    { name = "cfg-if", version = "0.1.10" },
-    # Pulled in by tracing-futures v0.2
-    { name = "pin-project", version = "0.4.27" },
-    { name = "pin-project-internal", version = "0.4.27" },
 ]
 skip-tree = []
 
