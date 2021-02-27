@@ -3,7 +3,10 @@ Dockerfile*
 **/target
 target
 .cargo
-templates
-Chart.yaml
-values.yaml
+.vscode
+.github
+.gitignore
 README.md
+*.yaml
+deny.toml
+chart

@@ -1,6 +1,6 @@
 [package]
 name = "ort-load"
-version = "0.1.14"
+version = "0.1.15"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
 publish = false

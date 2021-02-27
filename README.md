@@ -4,7 +4,7 @@ The project consists of a client and server that are ready to be deployed in
 Kubernetes, especially for testing [Linkerd](https://linkerd.io).
 
 ```
-ort 0.1.14
+ort 0.1.15
 Load harness
 
 USAGE:
@@ -45,6 +45,12 @@ SUBCOMMANDS:
 172.23.0.2:3000
 ```
 See <./chart/values.yml> and  <./viz/values.yml>
+
+## Building images
+
+```
+:; docker buildx build . --platform=linux/amd64,linux/arm64 --push -t ghcr.io/olix0r/ort:v0.1.15 --push
+```
 
 ## License
 
