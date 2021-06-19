@@ -2,5 +2,5 @@ apiVersion: v2
 name: ort
 description: Multi-protocol load generator
 type: application
-version: 0.1.15
+version: 0.1.16
 appVersion: 0.7.0
