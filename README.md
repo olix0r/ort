@@ -31,7 +31,7 @@ SUBCOMMANDS:
 :; helm install ort-viz ./viz --create-namespace -n ort-viz
 ## Run a topology
 :; helm install ort ./chart --create-namespace -n ort
-## Upgrade the toplogy with a custom setup
+## Upgrade the topology with a custom setup
 :; helm upgrade ort ./chart --namespace ort \
     --set load.threads=5 \
     --set load.flags.concurrencyLimit=10 \
@@ -40,7 +40,7 @@ SUBCOMMANDS:
     --set linkerd.config.proxyLogLevel=linkerd=debug\\,info \
     --set linkerd.config.proxyImage=ghcr.io/olix0r/l2-proxy \
     --set linkerd.config.proxyVersion=detect.0c823a6a
-## Get the Grafana addresst
+## Get the Grafana address
 :; echo "$(kubectl get -n ort-viz svc/grafana -o jsonpath='{.status.loadBalancer.ingress[0].ip}'):3000"
 172.23.0.2:3000
 ```
