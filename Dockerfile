@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:experimental
 
-ARG RUST_IMAGE=rust:1.50.0
+ARG RUST_IMAGE=rust:1.53.0
 ARG RUNTIME_IMAGE=scratch
 
 FROM $RUST_IMAGE as build
@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=target \
     mv target/${target}/release/ort /tmp
 
 FROM docker.io/curlimages/curl:7.75.0 as await
-ARG LINKERD_AWAIT_VERSION=v0.2.1
+ARG LINKERD_AWAIT_VERSION=v0.2.3
 ARG TARGETARCH
 RUN curl -fvsLo /tmp/linkerd-await https://github.com/olix0r/linkerd-await/releases/download/release/${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x /tmp/linkerd-await
 
