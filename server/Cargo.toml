@@ -15,7 +15,7 @@ bytes = "1"
 drain = "0.0.1"
 futures = "0.3"
 ort-core = { path = "../core" }
-ort-grpc = { path = "../grpc" }
+ort-grpc = { path = "../grpc", features = ["server"] }
 ort-http = { path = "../http" }
 ort-tcp = { path = "../tcp" }
 rand =  "0.8"

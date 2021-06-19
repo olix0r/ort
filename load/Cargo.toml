@@ -15,7 +15,7 @@ futures = "0.3"
 http = "0.2"
 hyper = "0.14"
 ort-core = { path = "../core" }
-ort-grpc = { path = "../grpc" }
+ort-grpc = { path = "../grpc", features = ["client"] }
 ort-http = { path = "../http" }
 ort-tcp = { path = "../tcp" }
 linkerd-metrics = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main", features = ["summary"] }
