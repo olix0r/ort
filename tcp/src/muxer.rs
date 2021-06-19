@@ -1,7 +1,7 @@
 use crate::next_or_pending;
 use bytes::{Buf, BufMut, BytesMut};
+use drain::Watch as Drain;
 use futures::{prelude::*, stream::FuturesUnordered};
-use linkerd_drain::Watch as Drain;
 use std::collections::HashMap;
 use tokio::{
     io,

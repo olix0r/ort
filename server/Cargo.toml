@@ -12,8 +12,8 @@ grpc-fmt = ["ort-grpc/rustfmt"]
 [dependencies]
 async-trait = "0.1"
 bytes = "1"
+drain = "0.0.1"
 futures = "0.3"
-linkerd-drain = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main" }
 ort-core = { path = "../core" }
 ort-grpc = { path = "../grpc" }
 ort-http = { path = "../http" }

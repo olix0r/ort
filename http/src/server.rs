@@ -1,5 +1,5 @@
+use drain::Watch as Drain;
 use futures::prelude::*;
-use linkerd_drain::Watch as Drain;
 use ort_core::{Error, Ort, Reply, Spec};
 use std::{convert::Infallible, net::SocketAddr};
 use tokio::time;

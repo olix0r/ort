@@ -1,7 +1,7 @@
 //use ort_core::{Spec, Reply};
 use crate::proto::{ort_server, response_spec as spec, ResponseReply, ResponseSpec};
+use drain::Watch as Drain;
 use futures::prelude::*;
-use linkerd_drain::Watch as Drain;
 use ort_core::{Error, Ort, Reply, Spec};
 use std::convert::TryInto;
 

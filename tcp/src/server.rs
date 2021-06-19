@@ -1,6 +1,6 @@
 use crate::{muxer, next_or_pending, preface, ReplyCodec, SpecCodec};
+use drain::Watch as Drain;
 use futures::{prelude::*, stream::FuturesUnordered};
-use linkerd_drain::Watch as Drain;
 use ort_core::{Error, Ort};
 use std::net::SocketAddr;
 use tokio_util::codec::{FramedRead, FramedWrite};

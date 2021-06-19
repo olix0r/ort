@@ -9,8 +9,8 @@ license = "Apache-2.0"
 [dependencies]
 async-trait = "0.1"
 bytes = "1"
+drain = "0.0.1"
 futures = "0.3"
-linkerd-drain = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main" }
 ort-core = { path = "../core" }
 tokio = { version = "1", features = ["io-util", "macros", "net", "signal", "sync", "time"] }
 tokio-util = { version = "0.6", features = ["codec"] }

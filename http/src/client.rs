@@ -39,7 +39,7 @@ impl MakeOrt<http::Uri> for MakeHttp {
         }
         let client = builder.build(connect);
 
-        Ok(Http { target, client })
+        Ok(Http { client, target })
     }
 }
 

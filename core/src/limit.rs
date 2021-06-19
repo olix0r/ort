@@ -35,7 +35,7 @@ where
     async fn make_ort(&mut self, target: T) -> Result<Self::Ort, crate::Error> {
         let inner = self.inner.make_ort(target).await?;
         let acquire = self.acquire.clone();
-        Ok(Limit { inner, acquire })
+        Ok(Limit { acquire, inner })
     }
 }
 

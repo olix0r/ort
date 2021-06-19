@@ -13,9 +13,9 @@ impl From<u64> for Latency {
     }
 }
 
-impl Into<u64> for Latency {
-    fn into(self) -> u64 {
-        self.millis
+impl From<Latency> for u64 {
+    fn from(Latency { millis }: Latency) -> u64 {
+        millis
     }
 }
 
