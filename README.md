@@ -50,7 +50,7 @@ See <./chart/values.yml> and  <./viz/values.yml>
 ## Building images
 
 ```
-:; docker buildx build . --platform=linux/amd64,linux/arm64 --push -t ghcr.io/olix0r/ort:v0.1.16 --push
+:; docker buildx build . --platform=linux/amd64,linux/arm64 -t ghcr.io/olix0r/ort:v0.1.16 --push
 ```
 
 ## License
