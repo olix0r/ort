@@ -13,21 +13,25 @@ use tokio::signal::{
     ctrl_c,
     unix::{signal, SignalKind},
 };
+use tracing::{debug, instrument};
 
 #[derive(StructOpt)]
 #[structopt(name = "server", about = "Load target")]
 pub struct Cmd {
+    #[structopt(short, long, default_value = "0.0.0.0:9090")]
+    admin_addr: SocketAddr,
+
     #[structopt(short, long, default_value = "0.0.0.0:8070")]
     grpc_addr: SocketAddr,
 
     #[structopt(short, long, default_value = "0.0.0.0:8080")]
     http_addr: SocketAddr,
 
-    #[structopt(long, default_value = "0")]
-    response_latency: latency::Distribution,
-
     #[structopt(short, long, default_value = "0.0.0.0:8090")]
     tcp_addr: SocketAddr,
+
+    #[structopt(long, default_value = "0")]
+    response_latency: latency::Distribution,
 }
 
 impl Cmd {
@@ -39,6 +43,8 @@ impl Cmd {
         tokio::spawn(http::Server::new(replier.clone()).serve(self.http_addr, closed.clone()));
         tokio::spawn(tcp::Server::new(replier).serve(self.tcp_addr, closed));
 
+        tokio::spawn(admin(self.admin_addr));
+
         let mut term = signal(SignalKind::terminate())?;
         tokio::select! {
             _ = ctrl_c() => {}
@@ -49,4 +55,29 @@ impl Cmd {
 
         Ok(())
     }
+}
+
+/// Runs an admin server that can be used for health checking.
+///
+/// It always returns a successful response with a body of `ok\n`.
+#[instrument]
+async fn admin(addr: SocketAddr) -> Result<(), hyper::Error> {
+    use std::convert::Infallible;
+
+    hyper::Server::bind(&addr)
+        .serve(hyper::service::make_service_fn(move |_| async move {
+            Ok::<_, Infallible>(hyper::service::service_fn(
+                |req: hyper::Request<hyper::Body>| {
+                    debug!(?req);
+                    futures::future::ok::<_, Infallible>(match req.uri().path() {
+                        "/ready" | "/live" => hyper::Response::new(hyper::Body::from("ok\n")),
+                        _ => hyper::Response::builder()
+                            .status(hyper::StatusCode::NOT_FOUND)
+                            .body(hyper::Body::from("ok\n"))
+                            .unwrap(),
+                    })
+                },
+            ))
+        }))
+        .await
 }

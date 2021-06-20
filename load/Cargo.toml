@@ -1,6 +1,6 @@
 [package]
 name = "ort-load"
-version = "0.1.16"
+version = "0.1.17"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
 publish = false
@@ -13,7 +13,7 @@ grpc-fmt = ["ort-grpc/rustfmt"]
 async-trait = "0.1"
 futures = "0.3"
 http = "0.2"
-hyper = "0.14"
+hyper = { version = "0.14", default-features = false }
 ort-core = { path = "../core" }
 ort-grpc = { path = "../grpc", features = ["client"] }
 ort-http = { path = "../http" }

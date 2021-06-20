@@ -126,6 +126,9 @@ spec:
           {{- end }}
           {{- end }}
           ports:
+            - protocol: TCP
+              containerPort: 9090
+              name: admin-http
           {{- range $name, $config := $protocols }}
           {{-   if $config.enabled }}
             - protocol: TCP
@@ -133,4 +136,16 @@ spec:
               name: {{ $name }}
           {{-   end }}
           {{- end }}
+          livenessProbe:
+            httpGet:
+              port: admin-http
+              path: /live
+            initialDelaySeconds: 1
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              port: admin-http
+              path: /ready
+            initialDelaySeconds: 1
+            periodSeconds: 5
 {{- end}}
