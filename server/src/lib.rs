@@ -65,11 +65,11 @@ async fn admin(addr: SocketAddr) -> Result<(), hyper::Error> {
     use std::convert::Infallible;
 
     hyper::Server::bind(&addr)
-        .serve(hyper::service::make_service_fn(move |_| async move {
+        .serve(hyper::service::make_service_fn(move |_| async {
             Ok::<_, Infallible>(hyper::service::service_fn(
-                |req: hyper::Request<hyper::Body>| {
+                |req: hyper::Request<hyper::Body>| async move {
                     debug!(?req);
-                    futures::future::ok::<_, Infallible>(match req.uri().path() {
+                    Ok::<_, Infallible>(match req.uri().path() {
                         "/ready" | "/live" => hyper::Response::new(hyper::Body::from("ok\n")),
                         _ => hyper::Response::builder()
                             .status(hyper::StatusCode::NOT_FOUND)
