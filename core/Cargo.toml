@@ -17,5 +17,3 @@ rand = "0.8"
 regex = "1"
 serde = { version = "1", features = ["derive"], optional = true }
 tokio = { version = "1", features = ["macros", "sync", "time"] }
-tracing = "0.1"
-#tracing-futures = "0.2"

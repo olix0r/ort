@@ -611,7 +611,6 @@ dependencies = [
  "regex",
  "serde",
  "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -643,7 +642,6 @@ dependencies = [
  "ort-core",
  "tokio",
  "tracing",
- "tracing-futures",
 ]
 
 [[package]]
@@ -661,8 +659,6 @@ dependencies = [
  "ort-tcp",
  "parking_lot",
  "rand",
- "serde",
- "serde_json",
  "structopt",
  "tokio",
  "tracing",

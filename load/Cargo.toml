@@ -21,8 +21,6 @@ ort-tcp = { path = "../tcp" }
 linkerd-metrics = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main", features = ["summary"] }
 parking_lot = "0.11"
 rand = "0.8"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
 structopt = "0.3"
 tokio = { version = "1", features = ["macros", "signal", "sync", "time"] }
 tracing = "0.1"
