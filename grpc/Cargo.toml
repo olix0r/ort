@@ -17,7 +17,7 @@ prost = "0.7"
 prost-types = "0.7"
 
 async-trait = { version = "0.1", optional = true }
-drain = { version = "0.0.1", optional = true }
+drain = { version = "0.1", optional = true }
 futures = { version = "0.3", default-features = false, optional = true }
 http = { version = "0.2", optional = true }
 ort-core = { path = "../core", optional = true }

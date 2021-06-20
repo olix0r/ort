@@ -12,7 +12,7 @@ grpc-fmt = ["ort-grpc/rustfmt"]
 [dependencies]
 async-trait = "0.1"
 bytes = "1"
-drain = "0.0.1"
+drain = "0.1"
 futures = { version = "0.3", default-features = false }
 hyper = { version = "0.14", default-features = false, features = ["http1", "server", "tcp"] }
 ort-core = { path = "../core" }
