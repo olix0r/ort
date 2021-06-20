@@ -10,12 +10,11 @@ license = "Apache-2.0"
 async-trait = "0.1"
 bytes = "1"
 drain = "0.0.1"
-futures = "0.3"
+futures = { version = "0.3", default-features = false }
 ort-core = { path = "../core" }
 tokio = { version = "1", features = ["io-util", "macros", "net", "signal", "sync", "time"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 tracing = "0.1"
-tracing-futures = "0.2"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt"] }

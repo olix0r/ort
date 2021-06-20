@@ -9,7 +9,7 @@ license = "Apache-2.0"
 [dependencies]
 async-trait = "0.1"
 drain = "0.0.1"
-futures = "0.3"
+futures = { version = "0.3", default-features = false }
 http = "0.2"
 hyper = { version = "0.14", features = ["http1", "client", "server", "tcp"] }
 ort-core = { path = "../core" }

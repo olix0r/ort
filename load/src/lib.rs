@@ -24,8 +24,7 @@ use tokio::{
     sync::Semaphore,
     time::Duration,
 };
-use tracing::debug_span;
-use tracing_futures::Instrument;
+use tracing::{debug_span, Instrument};
 
 #[derive(StructOpt)]
 #[structopt(name = "load", about = "Load generator")]

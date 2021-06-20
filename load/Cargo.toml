@@ -11,7 +11,7 @@ grpc-fmt = ["ort-grpc/rustfmt"]
 
 [dependencies]
 async-trait = "0.1"
-futures = "0.3"
+futures = { version = "0.3", default-features = false }
 http = "0.2"
 hyper = { version = "0.14", default-features = false }
 ort-core = { path = "../core" }
@@ -24,4 +24,3 @@ rand = "0.8"
 structopt = "0.3"
 tokio = { version = "1", features = ["macros", "signal", "sync", "time"] }
 tracing = "0.1"
-tracing-futures = "0.2"

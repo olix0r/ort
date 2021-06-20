@@ -4,8 +4,7 @@ use futures::{prelude::*, stream::FuturesUnordered};
 use ort_core::{Error, Ort};
 use std::net::SocketAddr;
 use tokio_util::codec::{FramedRead, FramedWrite};
-use tracing::{debug, debug_span, error, trace};
-use tracing_futures::Instrument;
+use tracing::{debug, debug_span, error, trace, Instrument};
 
 pub struct Server<O> {
     inner: O,

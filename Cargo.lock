@@ -662,7 +662,6 @@ dependencies = [
  "structopt",
  "tokio",
  "tracing",
- "tracing-futures",
 ]
 
 [[package]]
@@ -697,7 +696,6 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
- "tracing-futures",
 ]
 
 [[package]]

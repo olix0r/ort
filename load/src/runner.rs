@@ -6,8 +6,7 @@ use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
 };
-use tracing::{debug, debug_span, info, trace};
-use tracing_futures::Instrument;
+use tracing::{debug, debug_span, info, trace, Instrument};
 
 #[derive(Clone)]
 pub struct Runner<L> {

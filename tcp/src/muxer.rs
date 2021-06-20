@@ -8,8 +8,7 @@ use tokio::{
     sync::{mpsc, oneshot},
 };
 use tokio_util::codec::{Decoder, Encoder};
-use tracing::{debug, debug_span, error, info, trace};
-use tracing_futures::Instrument;
+use tracing::{debug, debug_span, error, info, trace, Instrument};
 
 #[derive(Default, Debug)]
 pub struct Muxer<E, D> {
