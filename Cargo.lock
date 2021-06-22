@@ -439,7 +439,7 @@ checksum = "12b8adadd720df158f4d70dfe7ccc6adb0472d7c55ca83445f6a5ab3e36f8fb6"
 [[package]]
 name = "linkerd-metrics"
 version = "0.1.0"
-source = "git+https://github.com/linkerd/linkerd2-proxy?branch=main#3290ab19c2dbdd34332cbfc819cfcd624e50724a"
+source = "git+https://github.com/linkerd/linkerd2-proxy?branch=main#13e2977279ed8e84720da37d7c8e17ba8dfa6bc0"
 dependencies = [
  "deflate",
  "hdrhistogram",
