@@ -13,7 +13,7 @@ client = ["async-trait", "http", "ort-core", "tracing", "transport"]
 server = ["async-trait", "drain", "futures", "ort-core", "tokio/time", "tracing", "transport"]
 
 [dependencies]
-prost = "0.7"
+prost = "0.8"
 prost-types = "0.7"
 
 async-trait = { version = "0.1", optional = true }
