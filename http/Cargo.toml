@@ -12,6 +12,6 @@ drain = "0.1"
 futures = { version = "0.3", default-features = false }
 http = "0.2"
 hyper = { version = "0.14", features = ["http1", "client", "server", "tcp"] }
-ort-core = { path = "../core" }
+ort-core = { version = "0.2", path = "../core" }
 tokio = { version = "1", features = ["time"] }
 tracing = "0.1"

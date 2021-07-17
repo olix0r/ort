@@ -1,6 +1,6 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let files = &["../proto/ort.proto"];
-    let dirs = &["../proto"];
+    let files = &["proto/ort.proto"];
+    let dirs = &["proto"];
 
     let build_client = std::env::var_os("CARGO_FEATURE_CLIENT").is_some();
     let build_server = std::env::var_os("CARGO_FEATURE_SERVER").is_some();

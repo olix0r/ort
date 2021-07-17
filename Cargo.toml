@@ -22,8 +22,8 @@ grpc-fmt = ["ort-load/grpc-fmt", "ort-server/grpc-fmt"]
 
 [dependencies]
 num_cpus = "1"
-ort-load = { path = "./load" }
-ort-server = { path = "./server" }
+ort-load = { version = "0.2", path = "./load" }
+ort-server = { version = "0.2", path = "./server" }
 structopt = "0.3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 tracing-subscriber = "0.2"
