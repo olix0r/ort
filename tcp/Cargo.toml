@@ -1,17 +1,17 @@
 [package]
 name = "ort-tcp"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
-publish = false
 license = "Apache-2.0"
+description = "TCP clients and servers for the Ort proxy load-testing harness"
 
 [dependencies]
 async-trait = "0.1"
 bytes = "1"
 drain = "0.1"
 futures = { version = "0.3", default-features = false, features = ["std"] }
-ort-core = { path = "../core" }
+ort-core = { version = "0.2", path = "../core" }
 tokio = { version = "1", features = ["io-util", "macros", "net", "signal", "sync", "time"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 tracing = "0.1"

@@ -1,10 +1,10 @@
 [package]
 name = "ort-core"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
-publish = false
 license = "Apache-2.0"
+description = "Core types for the Ort proxy load-testing harness"
 
 [features]
 deser = ["serde", "bytes/serde"]

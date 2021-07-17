@@ -11,11 +11,11 @@ members = [
 
 [package]
 name = "ort"
-version = "0.1.17"
+version = "0.2.0"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
-publish = false
 license = "Apache-2.0"
+description = "A proxy load-testing harness"
 
 [features]
 grpc-fmt = ["ort-load/grpc-fmt", "ort-server/grpc-fmt"]

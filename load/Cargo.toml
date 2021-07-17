@@ -1,10 +1,10 @@
 [package]
 name = "ort-load"
-version = "0.1.17"
+version = "0.2.0"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
-publish = false
 license = "Apache-2.0"
+description = "The Ort proxy load-testing client"
 
 [features]
 grpc-fmt = ["ort-grpc/rustfmt"]
@@ -14,10 +14,10 @@ async-trait = "0.1"
 futures = { version = "0.3", default-features = false }
 http = "0.2"
 hyper = { version = "0.14", default-features = false }
-ort-core = { path = "../core" }
-ort-grpc = { path = "../grpc", features = ["client"] }
-ort-http = { path = "../http" }
-ort-tcp = { path = "../tcp" }
+ort-core = { version = "0.2", path = "../core" }
+ort-grpc = { version = "0.2", path = "../grpc", features = ["client"] }
+ort-http = { version = "0.2", path = "../http" }
+ort-tcp = { version = "0.2", path = "../tcp" }
 linkerd-metrics = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main", features = ["summary"] }
 parking_lot = "0.11"
 rand = "0.8"
