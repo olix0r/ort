@@ -5,6 +5,10 @@ use ort_server as server;
 use structopt::StructOpt;
 use tokio::runtime as rt;
 
+#[cfg(feature = "mimalloc")]
+#[global_allocator]
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 #[derive(StructOpt)]
 #[structopt(about = "Load harness")]
 struct Ort {

@@ -18,9 +18,12 @@ license = "Apache-2.0"
 description = "A proxy load-testing harness"
 
 [features]
+default = ["mimalloc"]
 grpc-fmt = ["ort-load/grpc-fmt", "ort-server/grpc-fmt"]
+mimalloc-secure = ["mimalloc/secure"] # ~10% slower
 
 [dependencies]
+mimalloc = { version = "0.1.26", default-features = false, optional = true }
 num_cpus = "1"
 ort-load = { version = "0.2", path = "./load" }
 ort-server = { version = "0.2", path = "./server" }
