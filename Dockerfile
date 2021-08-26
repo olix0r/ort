@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:experimental
 
-ARG RUST_IMAGE=docker.io/library/rust:1.51.0-buster
+ARG RUST_IMAGE=docker.io/library/rust:1.54.0-buster
 ARG RUNTIME_IMAGE=gcr.io/distroless/cc:nonroot
 
 FROM $RUST_IMAGE as build
