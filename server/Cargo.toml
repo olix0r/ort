@@ -1,6 +1,6 @@
 [package]
 name = "ort-server"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -15,7 +15,6 @@ bytes = "1"
 drain = "0.1"
 futures = { version = "0.3", default-features = false }
 hyper = { version = "0.14", default-features = false, features = ["http1", "server", "tcp"] }
-mimalloc = { version = "0.1.26", default-features = false, optional = true }
 ort-core = { version = "0.2", path = "../core" }
 ort-grpc = { version = "0.2", path = "../grpc", features = ["server"] }
 ort-http = { version = "0.2", path = "../http" }
