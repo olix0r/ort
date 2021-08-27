@@ -70,5 +70,8 @@ spec:
             - protocol: TCP
               containerPort: 8000
               name: admin-http
+          resources:
+            cpu:
+              limit: {{ $load.threads }}
 {{-   end }}
 {{- end }}

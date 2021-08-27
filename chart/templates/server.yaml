@@ -148,4 +148,9 @@ spec:
               path: /ready
             initialDelaySeconds: 1
             periodSeconds: 5
+          {{- if $srv.threads }}
+          resources:
+            cpu:
+              limit: {{ $srv.threads }}
+          {{- end }}
 {{- end}}
