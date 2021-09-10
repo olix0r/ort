@@ -71,7 +71,7 @@ spec:
               containerPort: 8000
               name: admin-http
           resources:
-            cpu:
-              limit: {{ $load.threads }}
+            limits:
+              cpu: {{ $load.threads }}
 {{-   end }}
 {{- end }}

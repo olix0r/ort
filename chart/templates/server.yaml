@@ -150,7 +150,7 @@ spec:
             periodSeconds: 5
           {{- if $srv.threads }}
           resources:
-            cpu:
-              limit: {{ $srv.threads }}
+            limits:
+              cpu: {{ $srv.threads }}
           {{- end }}
 {{- end}}
