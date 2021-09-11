@@ -19,17 +19,19 @@ protocols:
 load:
   log: ort=debug
   replicas: 1
-  threads: 1
+  threads: 3
   linkerd: {inject: disabled}
   flags:
-    concurrencyLimit: 1
-    requestLimit: 1
-    requestLimitWindow: 1s
+    concurrencyLimit: 10000
+    requestLimit: 300000
+    requestLimitInit: 0
+    requestLimitRampPeriod: 300s
+    requestLimitWindow: 10s
 
 server:
   log: ort=debug
   threads: 1
-  services: 1
+
   replicas: 1
   split: false
   linkerd: {}
