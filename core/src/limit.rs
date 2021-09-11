@@ -53,7 +53,7 @@ where
     }
 }
 
-// === impl Acqire ===
+// === impl Acquire ===
 
 #[async_trait::async_trait]
 impl<A: Acquire, B: Acquire> Acquire for (A, B) {
