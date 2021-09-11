@@ -4,7 +4,7 @@ image: ghcr.io/olix0r/ort:v0.2.1
 # the service won't expose the port.
 protocols:
   grpc:
-    enabled: true
+    enabled: false
     port: 8070
     loadFlags: {}
   http:
@@ -20,7 +20,7 @@ load:
   log: ort=debug
   replicas: 1
   threads: 1
-  linkerd: {}
+  linkerd: {inject: disabled}
   flags:
     concurrencyLimit: 1
     requestLimit: 1
