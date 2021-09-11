@@ -10,6 +10,8 @@ use self::{
     admin::Admin, metrics::MakeMetrics, rate_limit::RateLimit, runner::Runner,
     timeout::MakeRequestTimeout,
 };
+use crate::rate_limit::Ramp;
+use anyhow::Result;
 use ort_core::{latency, parse_duration, Distribution, Error, MakeOrt, Ort, Reply, Spec};
 use ort_grpc::client::MakeGrpc;
 use ort_http::client::MakeHttp;
@@ -37,6 +39,12 @@ pub struct Cmd {
 
     #[structopt(long)]
     concurrency_limit: Option<usize>,
+
+    #[structopt(long)]
+    request_limit_init: Option<usize>,
+
+    #[structopt(long, parse(try_from_str = parse_duration), default_value = "0s")]
+    request_limit_ramp_period: Duration,
 
     #[structopt(long, default_value = "0")]
     request_limit: usize,
@@ -74,14 +82,16 @@ pub enum Flavor<H, G, T> {
 // === impl Load ===
 
 impl Cmd {
-    pub async fn run(self, threads: usize) -> Result<(), Box<dyn std::error::Error + 'static>> {
+    pub async fn run(self, threads: usize) -> Result<()> {
         let Self {
             admin_addr,
             clients,
             connect_timeout,
             concurrency_limit,
             request_timeout,
+            request_limit_init,
             request_limit,
+            request_limit_ramp_period,
             request_limit_window,
             response_latency,
             response_size,
@@ -90,7 +100,14 @@ impl Cmd {
         } = self;
 
         let concurrency = concurrency_limit.map(Semaphore::new).map(Arc::new);
-        let rate_limit = RateLimit::spawn(request_limit, request_limit_window);
+        let rate_limit = RateLimit::spawn(
+            Ramp::try_new(
+                request_limit_init.unwrap_or(request_limit),
+                request_limit,
+                request_limit_ramp_period,
+            )?,
+            request_limit_window,
+        );
 
         let runner = Runner::new(
             clients.unwrap_or(threads),

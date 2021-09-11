@@ -318,9 +318,9 @@ mod tests {
                 Self(n)
             }
         }
-        impl Into<u64> for Dingus {
-            fn into(self) -> u64 {
-                self.0
+        impl From<Dingus> for u64 {
+            fn from(Dingus(n): Dingus) -> u64 {
+                n
             }
         }
         impl std::str::FromStr for Dingus {

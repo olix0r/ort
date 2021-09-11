@@ -37,7 +37,9 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         .build()?;
 
     match cmd {
-        Cmd::Load(l) => rt.block_on(l.run(threads)),
-        Cmd::Server(s) => rt.block_on(s.run()),
+        Cmd::Load(l) => rt.block_on(l.run(threads))?,
+        Cmd::Server(s) => rt.block_on(s.run())?,
     }
+
+    Ok(())
 }

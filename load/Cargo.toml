@@ -10,6 +10,7 @@ description = "The Ort proxy load-testing client"
 grpc-fmt = ["ort-grpc/rustfmt"]
 
 [dependencies]
+anyhow = "1"
 async-trait = "0.1"
 futures = { version = "0.3", default-features = false }
 http = "0.2"
