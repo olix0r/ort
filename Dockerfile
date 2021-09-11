@@ -13,12 +13,6 @@ RUN --mount=type=cache,target=target \
     cargo build --locked --release --target=$target && \
     mv target/${target}/release/ort /tmp
 
-FROM docker.io/curlimages/curl:7.75.0 as await
-ARG LINKERD_AWAIT_VERSION=v0.2.4
-ARG TARGETARCH
-RUN curl -fvsLo /tmp/linkerd-await https://github.com/olix0r/linkerd-await/releases/download/release/${LINKERD_AWAIT_VERSION}/linkerd-await-${LINKERD_AWAIT_VERSION}-${TARGETARCH} && chmod +x /tmp/linkerd-await
-
 FROM $RUNTIME_IMAGE
-COPY --from=await /tmp/linkerd-await /linkerd-await
 COPY --from=build /tmp/ort /ort
-ENTRYPOINT ["/linkerd-await", "--", "/ort"]
+ENTRYPOINT ["/ort"]
