@@ -1,6 +1,6 @@
 [package]
 name = "ort-server"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
 license = "Apache-2.0"
