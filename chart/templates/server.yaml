@@ -4,6 +4,7 @@
 {{- $server := .Values.server }}
 {{- $linkerd := deepCopy .Values.linkerd | merge $server.linkerd }}
 {{- $protocols := .Values.protocols }}
+{{- $services := (.Values.server.services | default 1 | int)
 ---
 apiVersion: v1
 kind: Service
@@ -34,12 +35,12 @@ metadata:
 spec:
   service: logical
   backends:
-  {{- range $i, $e := until (int .Values.server.services) }}
+  {{- range $i, $e := until $services }}
     - service: concrete-{{ printf "%03d" $i }}
       weight: 1
   {{- end }}
 {{- end }}
-{{- range $i, $e := until (int .Values.server.services) }}
+{{- range $i, $e := until $services }}
 {{- if $server.split }}
 ---
 apiVersion: v1
