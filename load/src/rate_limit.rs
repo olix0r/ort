@@ -53,6 +53,9 @@ impl Ramp {
 
         let delta = self.max - self.min;
         let steps = (self.period.as_secs() / interval.as_secs()) as usize;
+        if steps == 0 {
+            return 0;
+        }
         delta / steps
     }
 }
