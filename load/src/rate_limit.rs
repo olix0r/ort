@@ -1,64 +1,13 @@
-use anyhow::{bail, Result};
+use super::Ramp;
 use ort_core::limit;
 use std::sync::{Arc, Weak};
 use tokio::{sync::Semaphore, time};
 use tracing::debug;
 
-pub struct Ramp {
-    min: usize,
-    max: usize,
-    period: time::Duration,
-}
-
 #[derive(Clone)]
-pub struct RateLimit(Arc<Semaphore>);
+pub(crate) struct RateLimit(Arc<Semaphore>);
 
 pub struct Permit(Option<tokio::sync::OwnedSemaphorePermit>);
-
-// === impl Ramp ===
-
-impl From<usize> for Ramp {
-    fn from(value: usize) -> Self {
-        Self {
-            min: value,
-            max: value,
-            period: time::Duration::from_secs(0),
-        }
-    }
-}
-
-impl Ramp {
-    pub fn try_new(min: usize, max: usize, period: time::Duration) -> Result<Self> {
-        if min > max {
-            bail!("min must be <= max");
-        }
-        if period.as_secs() == 0 && min != max {
-            bail!("period must be set if min != max")
-        }
-        Ok(Self { min, max, period })
-    }
-
-    fn init(&self) -> usize {
-        if self.period.as_secs() == 0 {
-            self.max
-        } else {
-            self.min
-        }
-    }
-
-    fn step(&self, interval: time::Duration) -> usize {
-        if self.period.as_secs() == 0 || interval.as_secs() == 0 {
-            return 0;
-        }
-
-        let delta = self.max - self.min;
-        let steps = (self.period.as_secs() / interval.as_secs()) as usize;
-        if steps == 0 {
-            return 0;
-        }
-        delta / steps
-    }
-}
 
 // === impl RateLimit ===
 
@@ -76,9 +25,22 @@ impl RateLimit {
     }
 }
 
+fn step(ramp: Ramp, interval: time::Duration) -> usize {
+    if ramp.period.as_secs() == 0 || interval.as_secs() == 0 {
+        return 0;
+    }
+
+    let delta = ramp.max - ramp.min;
+    let steps = (ramp.period.as_secs() / interval.as_secs()) as usize;
+    if steps == 0 {
+        return 0;
+    }
+    delta / steps
+}
+
 async fn run(ramp: Ramp, window: time::Duration, weak: Weak<Semaphore>) {
     let mut limit = ramp.init();
-    let step = ramp.step(window);
+    let step = step(ramp, window);
 
     let mut interval = time::interval_at(time::Instant::now() + window, window);
     loop {

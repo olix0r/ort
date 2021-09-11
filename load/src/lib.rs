@@ -1,29 +1,30 @@
 #![deny(warnings, rust_2018_idioms)]
 
 mod admin;
+mod concurrency_ramp;
 mod metrics;
 mod rate_limit;
 mod runner;
 mod timeout;
 
+use crate::concurrency_ramp::ConcurrencyRamp;
+
 use self::{
     admin::Admin, metrics::MakeMetrics, rate_limit::RateLimit, runner::Runner,
     timeout::MakeRequestTimeout,
 };
-use crate::rate_limit::Ramp;
-use anyhow::Result;
+use anyhow::{anyhow, bail, Result};
 use ort_core::{latency, parse_duration, Distribution, Error, MakeOrt, Ort, Reply, Spec};
 use ort_grpc::client::MakeGrpc;
 use ort_http::client::MakeHttp;
 use ort_tcp::client::MakeTcp;
-use std::{net::SocketAddr, str::FromStr, sync::Arc};
+use std::{fmt::Debug, net::SocketAddr, str::FromStr, sync::Arc};
 use structopt::StructOpt;
 use tokio::{
     signal::{
         ctrl_c,
         unix::{signal, SignalKind},
     },
-    sync::Semaphore,
     time::Duration,
 };
 use tracing::{debug_span, Instrument};
@@ -36,6 +37,12 @@ pub struct Cmd {
 
     #[structopt(long)]
     clients: Option<usize>,
+
+    #[structopt(long)]
+    concurrency_limit_init: Option<usize>,
+
+    #[structopt(long, parse(try_from_str = parse_duration), default_value = "0s")]
+    concurrency_limit_ramp_period: Duration,
 
     #[structopt(long)]
     concurrency_limit: Option<usize>,
@@ -70,6 +77,13 @@ pub struct Cmd {
     target: Target,
 }
 
+#[derive(Copy, Clone, Debug)]
+struct Ramp {
+    min: usize,
+    max: usize,
+    period: Duration,
+}
+
 type Target = Flavor<hyper::Uri, hyper::Uri, String>;
 
 #[derive(Clone, Debug)]
@@ -79,7 +93,7 @@ pub enum Flavor<H, G, T> {
     Tcp(T),
 }
 
-// === impl Load ===
+// === impl Cmd ===
 
 impl Cmd {
     pub async fn run(self, threads: usize) -> Result<()> {
@@ -87,7 +101,9 @@ impl Cmd {
             admin_addr,
             clients,
             connect_timeout,
+            concurrency_limit_init,
             concurrency_limit,
+            concurrency_limit_ramp_period,
             request_timeout,
             request_limit_init,
             request_limit,
@@ -99,7 +115,17 @@ impl Cmd {
             target,
         } = self;
 
-        let concurrency = concurrency_limit.map(Semaphore::new).map(Arc::new);
+        let concurrency = if let Some(c) = concurrency_limit {
+            let ramp = Ramp::try_new(
+                concurrency_limit_init.unwrap_or(c),
+                c,
+                concurrency_limit_ramp_period,
+            )?;
+            Some(ConcurrencyRamp::spawn(ramp))
+        } else {
+            None
+        };
+
         let rate_limit = RateLimit::spawn(
             Ramp::try_new(
                 request_limit_init.unwrap_or(request_limit),
@@ -200,17 +226,14 @@ where
 // === impl Target ===
 
 impl Target {
-    fn uri_default_port(
-        uri: http::Uri,
-        port: u16,
-    ) -> Result<http::Uri, Box<dyn std::error::Error + 'static>> {
+    fn uri_default_port(uri: http::Uri, port: u16) -> Result<http::Uri> {
         let mut p = uri.into_parts();
         p.authority = match p.authority {
             Some(a) => {
                 let s = format!("{}:{}", a.host(), a.port_u16().unwrap_or(port));
                 Some(http::uri::Authority::from_str(&s)?)
             }
-            None => return Err(InvalidTarget(http::Uri::from_parts(p)?).into()),
+            None => bail!("missing authority: {}", http::Uri::from_parts(p)?),
         };
         let uri = http::Uri::from_parts(p)?;
         Ok(uri)
@@ -218,9 +241,9 @@ impl Target {
 }
 
 impl FromStr for Target {
-    type Err = Box<dyn std::error::Error + 'static>;
+    type Err = anyhow::Error;
 
-    fn from_str(s: &str) -> Result<Target, Self::Err> {
+    fn from_str(s: &str) -> Result<Target> {
         let uri = http::Uri::from_str(s)?;
         match uri.scheme_str() {
             Some("grpc") => {
@@ -233,12 +256,13 @@ impl FromStr for Target {
             }
             Some("tcp") => {
                 let uri = Self::uri_default_port(uri, 8090)?;
-                match uri.authority() {
-                    Some(a) => Ok(Target::Tcp(a.to_string())),
-                    None => Err(InvalidTarget(uri).into()),
-                }
+                let a = uri
+                    .authority()
+                    .ok_or_else(|| anyhow!("missing authority"))?;
+                Ok(Target::Tcp(a.to_string()))
             }
-            _ => Err(InvalidTarget(uri).into()),
+            Some(s) => bail!("invalid scheme: {}", s),
+            None => bail!("missing scheme"),
         }
     }
 }
@@ -246,20 +270,41 @@ impl FromStr for Target {
 impl std::fmt::Display for Target {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Flavor::Http(h) => h.fmt(f),
-            Flavor::Grpc(g) => g.fmt(f),
-            Flavor::Tcp(t) => t.fmt(f),
+            Flavor::Http(h) => std::fmt::Display::fmt(h, f),
+            Flavor::Grpc(g) => std::fmt::Display::fmt(g, f),
+            Flavor::Tcp(t) => std::fmt::Display::fmt(t, f),
         }
     }
 }
 
-#[derive(Debug)]
-struct InvalidTarget(hyper::Uri);
+// === impl Ramp ===
 
-impl std::fmt::Display for InvalidTarget {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Unsupported scheme: {}", self.0)
+impl From<usize> for Ramp {
+    fn from(value: usize) -> Self {
+        Self {
+            min: value,
+            max: value,
+            period: Duration::from_secs(0),
+        }
     }
 }
 
-impl std::error::Error for InvalidTarget {}
+impl Ramp {
+    pub fn try_new(min: usize, max: usize, period: Duration) -> Result<Self> {
+        if min > max {
+            bail!("min must be <= max");
+        }
+        if period.as_secs() == 0 && min != max {
+            bail!("period must be set if min != max")
+        }
+        Ok(Self { min, max, period })
+    }
+
+    fn init(&self) -> usize {
+        if self.period.as_secs() == 0 {
+            self.max
+        } else {
+            self.min
+        }
+    }
+}
