@@ -1,6 +1,6 @@
 [package]
 name = "ort-tcp"
-version = "0.2.6"
+version = "0.2.7"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
 license = "Apache-2.0"
