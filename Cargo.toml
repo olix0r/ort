@@ -11,7 +11,7 @@ members = [
 
 [package]
 name = "ort"
-version = "0.2.3"
+version = "0.2.4"
 authors = ["Oliver Gould <ver@buoyant.io>"]
 edition = "2018"
 license = "Apache-2.0"
