@@ -50,6 +50,7 @@ async fn run(ramp: Ramp, weak: Weak<Semaphore>) {
         }
     }
     if concurrency != ramp.max {
+        interval.tick().await;
         if let Some(sem) = weak.upgrade() {
             sem.add_permits(ramp.max - concurrency);
             concurrency += ramp.max - concurrency;
