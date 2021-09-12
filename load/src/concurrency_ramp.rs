@@ -26,7 +26,7 @@ impl ConcurrencyRamp {
 async fn run(ramp: Ramp, weak: Weak<Semaphore>) {
     // Figure out how frequently to increase the concurrency and create a timer.
     debug_assert!(ramp.max > ramp.min && ramp.min_step != 0);
-    let updates = ((ramp.max - ramp.min) / ramp.min_step) - 1;
+    let updates = ((ramp.max - ramp.min) / ramp.min_step) + 1;
     let mut interval = {
         let interval = time::Duration::from_millis(ramp.period.as_millis() as u64 / updates as u64);
         time::interval_at(time::Instant::now() + interval, interval)
