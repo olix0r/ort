@@ -44,6 +44,9 @@ pub struct Cmd {
     #[structopt(long, parse(try_from_str = parse_duration), default_value = "0s")]
     concurrency_limit_ramp_period: Duration,
 
+    #[structopt(long, default_value = "1")]
+    concurrency_limit_ramp_step: usize,
+
     #[structopt(long)]
     concurrency_limit: Option<usize>,
 
@@ -52,6 +55,9 @@ pub struct Cmd {
 
     #[structopt(long, parse(try_from_str = parse_duration), default_value = "0s")]
     request_limit_ramp_period: Duration,
+
+    #[structopt(long, default_value = "1")]
+    request_limit_ramp_step: usize,
 
     #[structopt(long, default_value = "0")]
     request_limit: usize,
@@ -81,6 +87,7 @@ pub struct Cmd {
 struct Ramp {
     min: usize,
     max: usize,
+    min_step: usize,
     period: Duration,
 }
 
@@ -103,10 +110,12 @@ impl Cmd {
             connect_timeout,
             concurrency_limit_init,
             concurrency_limit,
+            concurrency_limit_ramp_step,
             concurrency_limit_ramp_period,
             request_timeout,
             request_limit_init,
             request_limit,
+            request_limit_ramp_step,
             request_limit_ramp_period,
             request_limit_window,
             response_latency,
@@ -119,6 +128,7 @@ impl Cmd {
             let ramp = Ramp::try_new(
                 concurrency_limit_init.unwrap_or(c),
                 c,
+                concurrency_limit_ramp_step,
                 concurrency_limit_ramp_period,
             )?;
             Some(ConcurrencyRamp::spawn(ramp))
@@ -130,6 +140,7 @@ impl Cmd {
             Ramp::try_new(
                 request_limit_init.unwrap_or(request_limit),
                 request_limit,
+                request_limit_ramp_step,
                 request_limit_ramp_period,
             )?,
             request_limit_window,
@@ -284,20 +295,26 @@ impl From<usize> for Ramp {
         Self {
             min: value,
             max: value,
+            min_step: 1,
             period: Duration::from_secs(0),
         }
     }
 }
 
 impl Ramp {
-    pub fn try_new(min: usize, max: usize, period: Duration) -> Result<Self> {
+    pub fn try_new(min: usize, max: usize, min_step: usize, period: Duration) -> Result<Self> {
         if min > max {
             bail!("min must be <= max");
         }
         if period.as_secs() == 0 && min != max {
             bail!("period must be set if min != max")
         }
-        Ok(Self { min, max, period })
+        Ok(Self {
+            min,
+            max,
+            min_step: min_step.max(1),
+            period,
+        })
     }
 
     fn init(&self) -> usize {
