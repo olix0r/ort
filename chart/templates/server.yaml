@@ -4,7 +4,7 @@
 {{- $server := .Values.server }}
 {{- $linkerd := deepCopy .Values.linkerd | merge $server.linkerd }}
 {{- $protocols := .Values.protocols }}
-{{- $services := (.Values.server.services | default 1 | int)
+{{- $services := (.Values.server.services | default 1 | int) }}
 ---
 apiVersion: v1
 kind: Service
