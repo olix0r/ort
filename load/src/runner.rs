@@ -46,57 +46,63 @@ impl<L: Acquire> Runner<L> {
     where
         C: MakeOrt<Target>,
     {
-        let mut tasks = FuturesUnordered::new();
+        let Self {
+            clients,
+            limit,
+            counter,
+            response_latencies,
+            response_sizes,
+        } = self;
 
-        for c in 0..self.clients {
-            let Self {
-                clients: _,
-                limit,
-                counter,
-                response_latencies,
-                response_sizes,
-            } = self.clone();
-            let mut connect = connect.clone();
-            let target = target.clone();
+        let mut tasks = (0..clients)
+            .map(|c| {
+                debug!(c, %target, "Spawning client task");
+                let limit = limit.clone();
+                let counter = counter.clone();
+                let response_latencies = response_latencies.clone();
+                let response_sizes = response_sizes.clone();
+                let mut connect = connect.clone();
+                let target = target.clone();
+                tokio::spawn(
+                    async move {
+                        let client = connect.make_ort(target).await?;
 
-            debug!(c, %target, "Initializing new client");
-            let client = tokio::spawn(
-                async move {
-                    let client = connect.make_ort(target).await?;
+                        while let Some(n) = counter.next() {
+                            let permit = limit.acquire().await;
 
-                    while let Some(n) = counter.next() {
-                        let permit = limit.acquire().await;
-
-                        let spec = {
-                            let mut rng = thread_rng();
-                            Spec {
-                                latency: response_latencies.sample(&mut rng),
-                                response_size: response_sizes.sample(&mut rng) as usize,
-                            }
-                        };
-
-                        let mut client = client.clone();
-                        tokio::spawn(
-                            async move {
-                                trace!(?spec, "Sending request");
-                                match client.ort(spec).await {
-                                    Ok(_) => trace!("Request complete"),
-                                    Err(error) => info!(%error, "Request failed"),
+                            let spec = {
+                                let mut rng = thread_rng();
+                                Spec {
+                                    latency: response_latencies.sample(&mut rng),
+                                    response_size: response_sizes.sample(&mut rng) as usize,
                                 }
-                                drop(permit);
-                            }
-                            .instrument(debug_span!("request", n)),
-                        );
+                            };
+
+                            let mut client = client.clone();
+                            tokio::spawn(
+                                async move {
+                                    trace!(?spec, "Sending request");
+                                    match client.ort(spec).await {
+                                        Ok(_) => trace!("Request complete"),
+                                        Err(error) => info!(%error, "Request failed"),
+                                    }
+                                    drop(permit);
+                                }
+                                .instrument(debug_span!("request", n)),
+                            );
+                        }
+
+                        debug!(c, "Client task complete");
+                        Ok::<_, Error>(())
                     }
+                    .instrument(debug_span!("client", c)),
+                )
+            })
+            .collect::<FuturesUnordered<_>>();
 
-                    Ok::<_, Error>(())
-                }
-                .instrument(debug_span!("client", c)),
-            );
-            tasks.push(client);
-        }
-
+        debug!(tasks = tasks.len(), "Awaiting ");
         while tasks.next().await.is_some() {}
+        debug!("All runner tasks completed");
 
         Ok(())
     }
