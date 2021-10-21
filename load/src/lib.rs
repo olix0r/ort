@@ -48,6 +48,9 @@ pub struct Cmd {
     concurrency_limit_ramp_step: usize,
 
     #[structopt(long)]
+    concurrency_limit_ramp_reset: bool,
+
+    #[structopt(long)]
     concurrency_limit: Option<usize>,
 
     #[structopt(long)]
@@ -58,6 +61,9 @@ pub struct Cmd {
 
     #[structopt(long, default_value = "1")]
     request_limit_ramp_step: usize,
+
+    #[structopt(long)]
+    request_limit_ramp_reset: bool,
 
     #[structopt(long, default_value = "0")]
     request_limit: usize,
@@ -89,6 +95,7 @@ struct Ramp {
     max: usize,
     min_step: usize,
     period: Duration,
+    reset: bool,
 }
 
 type Target = Flavor<hyper::Uri, hyper::Uri, String>;
@@ -112,11 +119,13 @@ impl Cmd {
             concurrency_limit,
             concurrency_limit_ramp_step,
             concurrency_limit_ramp_period,
+            concurrency_limit_ramp_reset,
             request_timeout,
             request_limit_init,
             request_limit,
             request_limit_ramp_step,
             request_limit_ramp_period,
+            request_limit_ramp_reset,
             request_limit_window,
             response_latency,
             response_size,
@@ -130,6 +139,7 @@ impl Cmd {
                 c,
                 concurrency_limit_ramp_step,
                 concurrency_limit_ramp_period,
+                concurrency_limit_ramp_reset,
             )?;
             Some(ConcurrencyRamp::spawn(ramp))
         } else {
@@ -142,6 +152,7 @@ impl Cmd {
                 request_limit,
                 request_limit_ramp_step,
                 request_limit_ramp_period,
+                request_limit_ramp_reset,
             )?,
             request_limit_window,
         );
@@ -297,12 +308,19 @@ impl From<usize> for Ramp {
             max: value,
             min_step: 1,
             period: Duration::from_secs(0),
+            reset: false,
         }
     }
 }
 
 impl Ramp {
-    pub fn try_new(min: usize, max: usize, min_step: usize, period: Duration) -> Result<Self> {
+    pub fn try_new(
+        min: usize,
+        max: usize,
+        min_step: usize,
+        period: Duration,
+        reset: bool,
+    ) -> Result<Self> {
         if min > max {
             bail!("min must be <= max");
         }
@@ -314,6 +332,7 @@ impl Ramp {
             max,
             min_step: min_step.max(1),
             period,
+            reset,
         })
     }
 

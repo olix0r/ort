@@ -49,6 +49,8 @@ async fn run(ramp: Ramp, window: time::Duration, weak: Weak<Semaphore>) {
 
         if limit < ramp.max {
             limit = (limit + step).min(ramp.max);
+        } else if ramp.reset {
+            limit = ramp.init();
         }
 
         // Refill the semaphore up to `limit`. If all of the acquire handles have been dropped, stop
