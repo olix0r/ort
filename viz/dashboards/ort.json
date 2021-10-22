@@ -15,7 +15,7 @@
     "editable": true,
     "gnetId": null,
     "graphTooltip": 1,
-    "iteration": 1634863019252,
+    "iteration": 1634863019254,
     "links": [],
     "panels": [
         {
@@ -30,6 +30,13 @@
             "id": 8,
             "panels": [],
             "repeat": "protocol",
+            "scopedVars": {
+                "protocol": {
+                    "selected": false,
+                    "text": "http",
+                    "value": "http"
+                }
+            },
             "title": "Load: $protocol",
             "type": "row"
         },
@@ -93,6 +100,13 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
+            "scopedVars": {
+                "protocol": {
+                    "selected": false,
+                    "text": "http",
+                    "value": "http"
+                }
+            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": true,
@@ -194,6 +208,13 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
+            "scopedVars": {
+                "protocol": {
+                    "selected": false,
+                    "text": "http",
+                    "value": "http"
+                }
+            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": false,
@@ -337,6 +358,13 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
+            "scopedVars": {
+                "protocol": {
+                    "selected": false,
+                    "text": "http",
+                    "value": "http"
+                }
+            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": false,
@@ -452,6 +480,13 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
+            "scopedVars": {
+                "protocol": {
+                    "selected": false,
+                    "text": "http",
+                    "value": "http"
+                }
+            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": false,
@@ -561,9 +596,16 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
+            "scopedVars": {
+                "protocol": {
+                    "selected": false,
+                    "text": "http",
+                    "value": "http"
+                }
+            },
             "seriesOverrides": [],
             "spaceLength": 10,
-            "stack": true,
+            "stack": false,
             "steppedLine": false,
             "targets": [
                 {
@@ -574,7 +616,7 @@
                     "refId": "A"
                 },
                 {
-                    "expr": "sum(delta(tcp_close_total{direction=\"outbound\",ort_role=\"load\",ort_protocol=\"$protocol\"}[$__rate_interval])) by (pod, peer)",
+                    "expr": "-1*sum(delta(tcp_close_total{direction=\"outbound\",ort_role=\"load\",ort_protocol=\"$protocol\"}[$__rate_interval])) by (pod, peer)",
                     "instant": false,
                     "interval": "",
                     "legendFormat": "close {{pod}} {{peer}}",
@@ -606,7 +648,7 @@
                     "label": null,
                     "logBase": 1,
                     "max": null,
-                    "min": "0",
+                    "min": null,
                     "show": true
                 },
                 {
@@ -666,6 +708,13 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
+            "scopedVars": {
+                "protocol": {
+                    "selected": false,
+                    "text": "http",
+                    "value": "http"
+                }
+            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": true,
@@ -769,6 +818,13 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
+            "scopedVars": {
+                "protocol": {
+                    "selected": false,
+                    "text": "http",
+                    "value": "http"
+                }
+            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": false,
@@ -872,6 +928,13 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
+            "scopedVars": {
+                "protocol": {
+                    "selected": false,
+                    "text": "http",
+                    "value": "http"
+                }
+            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": false,
@@ -1396,7 +1459,7 @@
             "renderer": "flot",
             "seriesOverrides": [],
             "spaceLength": 10,
-            "stack": true,
+            "stack": false,
             "steppedLine": false,
             "targets": [
                 {
@@ -1450,7 +1513,7 @@
                     "logBase": 1,
                     "max": null,
                     "min": null,
-                    "show": false
+                    "show": true
                 },
                 {
                     "$$hashKey": "object:1084",
@@ -1805,7 +1868,7 @@
         ]
     },
     "time": {
-        "from": "2021-10-21T23:30:00.000Z",
+        "from": "now-15m",
         "to": "now"
     },
     "timepicker": {},

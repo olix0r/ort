@@ -20,7 +20,7 @@ load:
   log: ort=debug
   replicas: 1
   threads: 3
-  linkerd: {inject: disabled}
+  linkerd: {}
   flags:
     concurrencyLimitInit: 1
     concurrencyLimit: 10001
@@ -45,6 +45,6 @@ server:
 
 linkerd:
   inject: enabled
-  config: {}
-    #proxyImage: ...
-    #proxyVersion: ...
+  config:
+    proxyImage: ghcr.io/olix0r/l2-proxy
+    proxyVersion: jemalloc.e0f8cc8e1
