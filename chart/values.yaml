@@ -1,4 +1,4 @@
-image: ghcr.io/olix0r/ort:v0.2.10
+image: ghcr.io/olix0r/ort:v0.2.8
 
 # # If the protocol ports are unset (or set to 0), then the load deployment won't be created and
 # the service won't expose the port.
@@ -23,15 +23,15 @@ load:
   linkerd: {}
   flags:
     concurrencyLimitInit: 1
-    concurrencyLimit: 10001
-    concurrencyLimitRampStep: 2000
+    concurrencyLimit: 101
+    concurrencyLimitRampStep: 10
     concurrencyLimitRampReset: true
-    concurrencyLimitRampPeriod: 900s
+    concurrencyLimitRampPeriod: 300s
     requestLimitInit: 1
-    requestLimit: 100001
-    requestLimitRampStep: 2000
+    requestLimit: 1000001
+    requestLimitRampStep: 10000
     requestLimitRampReset: true
-    requestLimitRampPeriod: 900s
+    requestLimitRampPeriod: 300s
 
 server:
   log: ort=debug
@@ -45,6 +45,6 @@ server:
 
 linkerd:
   inject: enabled
-  config:
-    proxyImage: ghcr.io/olix0r/l2-proxy
-    proxyVersion: jemalloc.e0f8cc8e1
+  config: {}
+    #proxyImage: ghcr.io/olix0r/l2-proxy
+    #proxyVersion: jemalloc.e0f8cc8e1
