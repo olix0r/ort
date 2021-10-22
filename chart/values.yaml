@@ -26,12 +26,12 @@ load:
     concurrencyLimit: 10001
     concurrencyLimitRampStep: 2000
     concurrencyLimitRampReset: true
-    concurrencyLimitRampPeriod: 300s
+    concurrencyLimitRampPeriod: 900s
     requestLimitInit: 1
-    requestLimit: 10001
+    requestLimit: 100001
     requestLimitRampStep: 2000
     requestLimitRampReset: true
-    requestLimitRampPeriod: 300s
+    requestLimitRampPeriod: 900s
 
 server:
   log: ort=debug

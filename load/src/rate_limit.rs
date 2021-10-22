@@ -40,7 +40,7 @@ fn step(ramp: Ramp, interval: time::Duration) -> usize {
 
 async fn run(ramp: Ramp, window: time::Duration, weak: Weak<Semaphore>) {
     let mut limit = ramp.init();
-    let step = step(ramp, window);
+    let step = step(ramp, window).max(ramp.min_step);
 
     let mut interval = time::interval_at(time::Instant::now() + window, window);
     loop {
@@ -48,7 +48,7 @@ async fn run(ramp: Ramp, window: time::Duration, weak: Weak<Semaphore>) {
         interval.tick().await;
 
         if limit < ramp.max {
-            limit = (limit + step).min(ramp.max);
+            limit = limit.saturating_add(step).min(ramp.max);
         } else if ramp.reset {
             limit = ramp.init();
         }
