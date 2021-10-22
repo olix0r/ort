@@ -61,7 +61,7 @@ async fn run(ramp: Ramp, window: time::Duration, weak: Weak<Semaphore>) {
                 return;
             }
             Some(sem) => {
-                let permits = limit - sem.available_permits();
+                let permits = limit.saturatingsub(sem.available_permits());
                 debug!(permits, "Refilling rate limit");
                 sem.add_permits(permits);
             }
