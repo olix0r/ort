@@ -606,7 +606,7 @@ checksum = "692fcb63b64b1758029e0a96ee63e049ce8c5948587f2f7208df04625e5f6b56"
 
 [[package]]
 name = "ort"
-version = "0.2.9"
+version = "0.2.10"
 dependencies = [
  "jemallocator",
  "num_cpus",
@@ -620,7 +620,7 @@ dependencies = [
 
 [[package]]
 name = "ort-core"
-version = "0.2.9"
+version = "0.2.10"
 dependencies = [
  "async-trait",
  "bytes",
@@ -633,7 +633,7 @@ dependencies = [
 
 [[package]]
 name = "ort-grpc"
-version = "0.2.9"
+version = "0.2.10"
 dependencies = [
  "async-trait",
  "drain",
@@ -650,7 +650,7 @@ dependencies = [
 
 [[package]]
 name = "ort-http"
-version = "0.2.9"
+version = "0.2.10"
 dependencies = [
  "async-trait",
  "drain",
@@ -664,7 +664,7 @@ dependencies = [
 
 [[package]]
 name = "ort-load"
-version = "0.2.9"
+version = "0.2.10"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -685,7 +685,7 @@ dependencies = [
 
 [[package]]
 name = "ort-server"
-version = "0.2.9"
+version = "0.2.10"
 dependencies = [
  "async-trait",
  "bytes",
@@ -705,7 +705,7 @@ dependencies = [
 
 [[package]]
 name = "ort-tcp"
-version = "0.2.9"
+version = "0.2.10"
 dependencies = [
  "async-trait",
  "bytes",
