@@ -18,12 +18,10 @@ license = "Apache-2.0"
 description = "A proxy load-testing harness"
 
 [features]
-default = ["mimalloc"]
+default = []
 grpc-fmt = ["ort-load/grpc-fmt", "ort-server/grpc-fmt"]
-mimalloc-secure = ["mimalloc", "mimalloc/secure"] # ~10% slower
 
 [dependencies]
-mimalloc = { version = "0.1.26", default-features = false, optional = true }
 num_cpus = "1"
 ort-load = { version = "0.2", path = "./load" }
 ort-server = { version = "0.2", path = "./server" }
@@ -31,6 +29,9 @@ structopt = "0.3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "time"] }
 tracing-subscriber = "0.2"
 tracing = "0.1"
+
+[target.x86_64-unknown-linux-gnu.dependencies]
+jemallocator = { version = "0.3" }
 
 [profile.release]
 lto = true

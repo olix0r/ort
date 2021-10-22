@@ -5,9 +5,9 @@ use ort_server as server;
 use structopt::StructOpt;
 use tokio::runtime as rt;
 
-#[cfg(feature = "mimalloc")]
+#[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
 #[global_allocator]
-static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 #[derive(StructOpt)]
 #[structopt(about = "Load harness")]
