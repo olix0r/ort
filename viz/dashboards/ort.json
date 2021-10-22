@@ -15,7 +15,7 @@
     "editable": true,
     "gnetId": null,
     "graphTooltip": 1,
-    "iteration": 1630030386251,
+    "iteration": 1634863019252,
     "links": [],
     "panels": [
         {
@@ -30,13 +30,6 @@
             "id": 8,
             "panels": [],
             "repeat": "protocol",
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
-                }
-            },
             "title": "Load: $protocol",
             "type": "row"
         },
@@ -100,13 +93,6 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
-                }
-            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": true,
@@ -208,13 +194,6 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
-                }
-            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": false,
@@ -358,13 +337,6 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
-                }
-            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": false,
@@ -480,13 +452,6 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
-                }
-            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": false,
@@ -596,13 +561,6 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
-                }
-            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": true,
@@ -708,13 +666,6 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
-                }
-            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": true,
@@ -818,13 +769,6 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
-                }
-            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": false,
@@ -928,13 +872,6 @@
             "pointradius": 2,
             "points": false,
             "renderer": "flot",
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "grpc",
-                    "value": "grpc"
-                }
-            },
             "seriesOverrides": [],
             "spaceLength": 10,
             "stack": false,
@@ -991,1009 +928,12 @@
             }
         },
         {
-            "collapsed": false,
             "datasource": null,
             "gridPos": {
                 "h": 1,
                 "w": 24,
                 "x": 0,
                 "y": 26
-            },
-            "id": 68,
-            "panels": [],
-            "repeatIteration": 1630030386251,
-            "repeatPanelId": 8,
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "http",
-                    "value": "http"
-                }
-            },
-            "title": "Load: $protocol",
-            "type": "row"
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": null,
-            "description": "",
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {
-                        "align": null,
-                        "filterable": false
-                    },
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "red",
-                                "value": 80
-                            }
-                        ]
-                    }
-                },
-                "overrides": []
-            },
-            "fill": 1,
-            "fillGradient": 7,
-            "gridPos": {
-                "h": 7,
-                "w": 12,
-                "x": 0,
-                "y": 27
-            },
-            "hiddenSeries": false,
-            "id": 69,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 2,
-            "nullPointMode": "null as zero",
-            "options": {
-                "alertThreshold": true
-            },
-            "percentage": false,
-            "pluginVersion": "7.3.4",
-            "pointradius": 2,
-            "points": false,
-            "renderer": "flot",
-            "repeatIteration": 1630030386251,
-            "repeatPanelId": 55,
-            "repeatedByRow": true,
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "http",
-                    "value": "http"
-                }
-            },
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "stack": true,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "sum(rate(response_latency_ms_count{ort_role=\"load\",ort_protocol=\"$protocol\",direction=\"outbound\"}[$__rate_interval])) by (pod, dst_pod)",
-                    "format": "time_series",
-                    "hide": false,
-                    "instant": false,
-                    "interval": "",
-                    "legendFormat": "{{pod}} to {{dst_pod}}",
-                    "refId": "A"
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "RPS",
-            "tooltip": {
-                "shared": true,
-                "sort": 2,
-                "value_type": "individual"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "$$hashKey": "object:1640",
-                    "format": "none",
-                    "label": "",
-                    "logBase": 1,
-                    "max": null,
-                    "min": "0",
-                    "show": true
-                },
-                {
-                    "$$hashKey": "object:1641",
-                    "format": "reqps",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": null,
-            "description": "",
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {}
-                },
-                "overrides": []
-            },
-            "fill": 2,
-            "fillGradient": 2,
-            "gridPos": {
-                "h": 7,
-                "w": 12,
-                "x": 12,
-                "y": 27
-            },
-            "hiddenSeries": false,
-            "id": 70,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 2,
-            "nullPointMode": "null",
-            "options": {
-                "alertThreshold": true
-            },
-            "percentage": false,
-            "pluginVersion": "7.3.4",
-            "pointradius": 2,
-            "points": false,
-            "renderer": "flot",
-            "repeatIteration": 1630030386251,
-            "repeatPanelId": 3,
-            "repeatedByRow": true,
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "http",
-                    "value": "http"
-                }
-            },
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "histogram_quantile(0.5, sum(rate(response_latency_ms_bucket{ort_role=\"load\",ort_protocol=\"$protocol\",direction=\"outbound\"}[$__rate_interval])) by (le)) / 1000",
-                    "format": "time_series",
-                    "hide": false,
-                    "instant": false,
-                    "interval": "",
-                    "legendFormat": "Proxy p50",
-                    "refId": "A"
-                },
-                {
-                    "expr": "histogram_quantile(0.90, sum(rate(response_latency_ms_bucket{ort_role=\"load\",ort_protocol=\"$protocol\",direction=\"outbound\"}[$__rate_interval])) by (le)) / 1000",
-                    "interval": "",
-                    "legendFormat": "Proxy p90",
-                    "refId": "B"
-                },
-                {
-                    "expr": "histogram_quantile(0.99, sum(rate(response_latency_ms_bucket{ort_role=\"load\",ort_protocol=\"$protocol\",direction=\"outbound\"}[$__rate_interval])) by (le)) / 1000",
-                    "interval": "",
-                    "legendFormat": "Proxy p99",
-                    "refId": "C"
-                },
-                {
-                    "expr": "sum(response_latency_seconds{ort_role=\"load\",ort_protocol=\"$protocol\",quantile!=\"1\",quantile!=\"0\"}) by (quantile)",
-                    "interval": "",
-                    "legendFormat": "Load {{quantile }}",
-                    "refId": "D"
-                },
-                {
-                    "expr": "histogram_quantile(0.75, sum(rate(response_latency_ms_bucket{ort_role=\"load\",ort_protocol=\"$protocol\",direction=\"outbound\"}[$__rate_interval])) by (le)) / 1000",
-                    "format": "time_series",
-                    "hide": false,
-                    "instant": false,
-                    "interval": "",
-                    "legendFormat": "Proxy p75",
-                    "refId": "E"
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Latency",
-            "tooltip": {
-                "shared": true,
-                "sort": 2,
-                "value_type": "individual"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "$$hashKey": "object:520",
-                    "format": "s",
-                    "label": null,
-                    "logBase": 2,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                },
-                {
-                    "$$hashKey": "object:521",
-                    "format": "s",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": "0",
-                    "show": false
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": null,
-            "description": "",
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {},
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "red",
-                                "value": 80
-                            }
-                        ]
-                    }
-                },
-                "overrides": []
-            },
-            "fill": 1,
-            "fillGradient": 7,
-            "gridPos": {
-                "h": 6,
-                "w": 12,
-                "x": 0,
-                "y": 34
-            },
-            "hiddenSeries": false,
-            "id": 71,
-            "interval": "20s",
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 2,
-            "nullPointMode": "null",
-            "options": {
-                "alertThreshold": true
-            },
-            "percentage": false,
-            "pluginVersion": "7.3.4",
-            "pointradius": 2,
-            "points": false,
-            "renderer": "flot",
-            "repeatIteration": 1630030386251,
-            "repeatPanelId": 5,
-            "repeatedByRow": true,
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "http",
-                    "value": "http"
-                }
-            },
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "rate(process_cpu_seconds_total{ort_role=\"load\",ort_protocol=\"$protocol\",job=\"proxy\"}[$__rate_interval])",
-                    "format": "time_series",
-                    "hide": false,
-                    "instant": false,
-                    "interval": "20",
-                    "legendFormat": "{{pod}}",
-                    "refId": "A"
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Proxy CPU",
-            "tooltip": {
-                "shared": true,
-                "sort": 2,
-                "value_type": "individual"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "$$hashKey": "object:3522",
-                    "format": "percentunit",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": "0",
-                    "show": true
-                },
-                {
-                    "$$hashKey": "object:3523",
-                    "format": "short",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": null,
-            "description": "",
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {},
-                    "mappings": [],
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "green",
-                                "value": null
-                            },
-                            {
-                                "color": "red",
-                                "value": 80
-                            }
-                        ]
-                    }
-                },
-                "overrides": []
-            },
-            "fill": 1,
-            "fillGradient": 7,
-            "gridPos": {
-                "h": 6,
-                "w": 12,
-                "x": 12,
-                "y": 34
-            },
-            "hiddenSeries": false,
-            "id": 72,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 3,
-            "nullPointMode": "null",
-            "options": {
-                "alertThreshold": true
-            },
-            "percentage": false,
-            "pluginVersion": "7.3.4",
-            "pointradius": 2,
-            "points": false,
-            "renderer": "flot",
-            "repeatIteration": 1630030386251,
-            "repeatPanelId": 6,
-            "repeatedByRow": true,
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "http",
-                    "value": "http"
-                }
-            },
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "process_resident_memory_bytes{ort_role=\"load\",ort_protocol=\"$protocol\"}",
-                    "format": "time_series",
-                    "hide": false,
-                    "instant": false,
-                    "interval": "",
-                    "legendFormat": "{{pod}}",
-                    "refId": "A"
-                },
-                {
-                    "expr": "(process_resident_memory_bytes - 12 * 1024 * 1024) / on(pod) sum(tcp_open_connections{direction=\"outbound\",ort_role=\"load\",ort_protocol=\"$protocol\"}) by (pod)",
-                    "hide": true,
-                    "interval": "",
-                    "legendFormat": "{{pod}} per connection",
-                    "refId": "B"
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Proxy RSS",
-            "tooltip": {
-                "shared": true,
-                "sort": 2,
-                "value_type": "individual"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "$$hashKey": "object:2695",
-                    "format": "decbytes",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": "0",
-                    "show": true
-                },
-                {
-                    "$$hashKey": "object:2696",
-                    "format": "short",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": true,
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": null,
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {}
-                },
-                "overrides": []
-            },
-            "fill": 0,
-            "fillGradient": 0,
-            "gridPos": {
-                "h": 6,
-                "w": 12,
-                "x": 0,
-                "y": 40
-            },
-            "hiddenSeries": false,
-            "id": 73,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "hideEmpty": true,
-                "hideZero": true,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": false,
-            "linewidth": 1,
-            "nullPointMode": "null",
-            "options": {
-                "alertThreshold": true
-            },
-            "percentage": false,
-            "pluginVersion": "7.3.4",
-            "pointradius": 2,
-            "points": false,
-            "renderer": "flot",
-            "repeatIteration": 1630030386251,
-            "repeatPanelId": 34,
-            "repeatedByRow": true,
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "http",
-                    "value": "http"
-                }
-            },
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "stack": true,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "sum(delta(tcp_open_total{direction=\"outbound\",ort_role=\"load\",ort_protocol=\"$protocol\"}[$__rate_interval])) by (pod, peer)",
-                    "instant": false,
-                    "interval": "",
-                    "legendFormat": "connect {{pod}} {{peer}}",
-                    "refId": "A"
-                },
-                {
-                    "expr": "sum(delta(tcp_close_total{direction=\"outbound\",ort_role=\"load\",ort_protocol=\"$protocol\"}[$__rate_interval])) by (pod, peer)",
-                    "instant": false,
-                    "interval": "",
-                    "legendFormat": "close {{pod}} {{peer}}",
-                    "refId": "C"
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "TCP Connects",
-            "tooltip": {
-                "shared": true,
-                "sort": 2,
-                "value_type": "individual"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "$$hashKey": "object:124",
-                    "format": "short",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": "0",
-                    "show": true
-                },
-                {
-                    "$$hashKey": "object:125",
-                    "format": "short",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": false
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": null,
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {}
-                },
-                "overrides": []
-            },
-            "fill": 1,
-            "fillGradient": 7,
-            "gridPos": {
-                "h": 6,
-                "w": 12,
-                "x": 12,
-                "y": 40
-            },
-            "hiddenSeries": false,
-            "id": 74,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 2,
-            "nullPointMode": "null as zero",
-            "options": {
-                "alertThreshold": true
-            },
-            "percentage": false,
-            "pluginVersion": "7.3.4",
-            "pointradius": 2,
-            "points": false,
-            "renderer": "flot",
-            "repeatIteration": 1630030386251,
-            "repeatPanelId": 51,
-            "repeatedByRow": true,
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "http",
-                    "value": "http"
-                }
-            },
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "stack": true,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "sum(tcp_open_connections{direction=\"outbound\",ort_role=\"load\",ort_protocol=\"$protocol\",peer=\"src\"}) by (pod)",
-                    "interval": "",
-                    "legendFormat": "{{pod}} local",
-                    "refId": "A"
-                },
-                {
-                    "expr": "sum(tcp_open_connections{direction=\"outbound\",ort_role=\"load\",ort_protocol=\"$protocol\",peer=\"dst\"}) by (pod, dst_pod)",
-                    "interval": "",
-                    "legendFormat": "{{pod}} to {{dst_pod}}",
-                    "refId": "B"
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "TCP Connections",
-            "tooltip": {
-                "shared": true,
-                "sort": 2,
-                "value_type": "individual"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "$$hashKey": "object:923",
-                    "format": "short",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": "0",
-                    "show": true
-                },
-                {
-                    "$$hashKey": "object:924",
-                    "format": "short",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": false
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": null,
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {}
-                },
-                "overrides": []
-            },
-            "fill": 0,
-            "fillGradient": 0,
-            "gridPos": {
-                "h": 6,
-                "w": 12,
-                "x": 0,
-                "y": 46
-            },
-            "hiddenSeries": false,
-            "id": 75,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 1,
-            "nullPointMode": "null",
-            "options": {
-                "alertThreshold": true
-            },
-            "percentage": false,
-            "pluginVersion": "7.3.4",
-            "pointradius": 2,
-            "points": false,
-            "renderer": "flot",
-            "repeatIteration": 1630030386251,
-            "repeatPanelId": 66,
-            "repeatedByRow": true,
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "http",
-                    "value": "http"
-                }
-            },
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "sum(rate(stack_create_total{ort_role=\"load\",ort_protocol=\"$protocol\"}[$__rate_interval])) by (pod, direction, name)",
-                    "interval": "1",
-                    "legendFormat": "new {{direction}} {{name}} {{pod}}",
-                    "refId": "B"
-                },
-                {
-                    "expr": "sum(stack_create_total{ort_role=\"load\",ort_protocol=\"$protocol\"} - stack_drop_total{ort_role=\"load\",ort_protocol=\"$protocol\"}) by (pod, direction, name)",
-                    "interval": "",
-                    "legendFormat": "alive {{direction}} {{name}} {{pod}}",
-                    "refId": "D"
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Stacks",
-            "tooltip": {
-                "shared": true,
-                "sort": 2,
-                "value_type": "individual"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "$$hashKey": "object:927",
-                    "format": "short",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                },
-                {
-                    "$$hashKey": "object:928",
-                    "format": "short",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "aliasColors": {},
-            "bars": false,
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": null,
-            "fieldConfig": {
-                "defaults": {
-                    "custom": {}
-                },
-                "overrides": []
-            },
-            "fill": 0,
-            "fillGradient": 0,
-            "gridPos": {
-                "h": 6,
-                "w": 12,
-                "x": 12,
-                "y": 46
-            },
-            "hiddenSeries": false,
-            "id": 76,
-            "legend": {
-                "avg": false,
-                "current": false,
-                "max": false,
-                "min": false,
-                "show": false,
-                "total": false,
-                "values": false
-            },
-            "lines": true,
-            "linewidth": 1,
-            "nullPointMode": "null",
-            "options": {
-                "alertThreshold": true
-            },
-            "percentage": false,
-            "pluginVersion": "7.3.4",
-            "pointradius": 2,
-            "points": false,
-            "renderer": "flot",
-            "repeatIteration": 1630030386251,
-            "repeatPanelId": 67,
-            "repeatedByRow": true,
-            "scopedVars": {
-                "protocol": {
-                    "selected": false,
-                    "text": "http",
-                    "value": "http"
-                }
-            },
-            "seriesOverrides": [],
-            "spaceLength": 10,
-            "stack": false,
-            "steppedLine": false,
-            "targets": [
-                {
-                    "expr": "sum(rate(stack_poll_total_ms{ort_role=\"load\",ort_protocol=\"$protocol\"}[$__rate_interval])) by (pod, direction, name)",
-                    "interval": "",
-                    "legendFormat": "{{direction}} {{name}} {{pod}}",
-                    "refId": "A"
-                }
-            ],
-            "thresholds": [],
-            "timeFrom": null,
-            "timeRegions": [],
-            "timeShift": null,
-            "title": "Stack Polls",
-            "tooltip": {
-                "shared": true,
-                "sort": 2,
-                "value_type": "individual"
-            },
-            "type": "graph",
-            "xaxis": {
-                "buckets": null,
-                "mode": "time",
-                "name": null,
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "$$hashKey": "object:927",
-                    "format": "ms",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                },
-                {
-                    "$$hashKey": "object:928",
-                    "format": "short",
-                    "label": null,
-                    "logBase": 1,
-                    "max": null,
-                    "min": null,
-                    "show": true
-                }
-            ],
-            "yaxis": {
-                "align": false,
-                "alignLevel": null
-            }
-        },
-        {
-            "datasource": null,
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 52
             },
             "id": 16,
             "title": "Servers",
@@ -2017,7 +957,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 53
+                "y": 27
             },
             "hiddenSeries": false,
             "id": 56,
@@ -2114,7 +1054,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 53
+                "y": 27
             },
             "hiddenSeries": false,
             "id": 57,
@@ -2191,7 +1131,7 @@
                     "$$hashKey": "object:1327",
                     "format": "s",
                     "label": null,
-                    "logBase": 1,
+                    "logBase": 2,
                     "max": null,
                     "min": null,
                     "show": true
@@ -2229,7 +1169,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 59
+                "y": 33
             },
             "hiddenSeries": false,
             "id": 25,
@@ -2326,7 +1266,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 59
+                "y": 33
             },
             "hiddenSeries": false,
             "id": 26,
@@ -2430,7 +1370,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 65
+                "y": 39
             },
             "hiddenSeries": false,
             "id": 52,
@@ -2472,13 +1412,13 @@
                     "refId": "B"
                 },
                 {
-                    "expr": "sum(delta(tcp_close_total{direction=\"inbound\",ort_role=\"server\",peer=\"src\"}[$__rate_interval])) by (pod, client_id)",
+                    "expr": "-1*sum(delta(tcp_close_total{direction=\"inbound\",ort_role=\"server\",peer=\"src\"}[$__rate_interval])) by (pod, client_id)",
                     "interval": "",
                     "legendFormat": "close {{pod}} from {{client_id}}",
                     "refId": "C"
                 },
                 {
-                    "expr": "sum(delta(tcp_close_total{direction=\"inbound\",ort_role=\"server\",peer=\"dst\"}[$__rate_interval])) by (pod)",
+                    "expr": "-1*sum(delta(tcp_close_total{direction=\"inbound\",ort_role=\"server\",peer=\"dst\"}[$__rate_interval])) by (pod)",
                     "interval": "",
                     "legendFormat": "close {{pod}} local",
                     "refId": "D"
@@ -2509,8 +1449,8 @@
                     "label": null,
                     "logBase": 1,
                     "max": null,
-                    "min": "0",
-                    "show": true
+                    "min": null,
+                    "show": false
                 },
                 {
                     "$$hashKey": "object:1084",
@@ -2529,7 +1469,7 @@
         },
         {
             "aliasColors": {},
-            "bars": true,
+            "bars": false,
             "dashLength": 10,
             "dashes": false,
             "datasource": null,
@@ -2545,7 +1485,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 65
+                "y": 39
             },
             "hiddenSeries": false,
             "id": 79,
@@ -2558,7 +1498,7 @@
                 "total": false,
                 "values": false
             },
-            "lines": false,
+            "lines": true,
             "linewidth": 1,
             "nullPointMode": "null",
             "options": {
@@ -2575,35 +1515,17 @@
             "steppedLine": false,
             "targets": [
                 {
-                    "expr": "sum(delta(tcp_open_total{direction=\"inbound\",ort_role=\"server\",peer=\"src\"}[$__rate_interval])) by (pod, client_id)",
+                    "expr": "sum(tcp_open_connections{direction=\"inbound\",ort_role=\"server\"}) by (pod, client_id, peer, target_port)",
                     "interval": "",
-                    "legendFormat": "connect {{pod}} from {{client_id}}",
+                    "legendFormat": "",
                     "refId": "A"
-                },
-                {
-                    "expr": "sum(delta(tcp_open_total{direction=\"inbound\",ort_role=\"server\",peer=\"dst\"}[$__rate_interval])) by (pod)",
-                    "interval": "",
-                    "legendFormat": "connect {{pod}} local",
-                    "refId": "B"
-                },
-                {
-                    "expr": "sum(delta(tcp_close_total{direction=\"inbound\",ort_role=\"server\",peer=\"src\"}[$__rate_interval])) by (pod, client_id)",
-                    "interval": "",
-                    "legendFormat": "close {{pod}} from {{client_id}}",
-                    "refId": "C"
-                },
-                {
-                    "expr": "sum(delta(tcp_close_total{direction=\"inbound\",ort_role=\"server\",peer=\"dst\"}[$__rate_interval])) by (pod)",
-                    "interval": "",
-                    "legendFormat": "close {{pod}} local",
-                    "refId": "D"
                 }
             ],
             "thresholds": [],
             "timeFrom": null,
             "timeRegions": [],
             "timeShift": null,
-            "title": "TCP Connects",
+            "title": "TCP Connections",
             "tooltip": {
                 "shared": true,
                 "sort": 2,
@@ -2660,7 +1582,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 0,
-                "y": 71
+                "y": 45
             },
             "hiddenSeries": false,
             "id": 80,
@@ -2763,7 +1685,7 @@
                 "h": 6,
                 "w": 12,
                 "x": 12,
-                "y": 71
+                "y": 45
             },
             "hiddenSeries": false,
             "id": 81,
@@ -2883,7 +1805,7 @@
         ]
     },
     "time": {
-        "from": "now-30m",
+        "from": "2021-10-21T23:30:00.000Z",
         "to": "now"
     },
     "timepicker": {},

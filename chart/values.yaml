@@ -22,11 +22,16 @@ load:
   threads: 3
   linkerd: {inject: disabled}
   flags:
-    concurrencyLimit: 10000
-    requestLimit: 300000
-    requestLimitInit: 0
+    concurrencyLimitInit: 1
+    concurrencyLimit: 10001
+    concurrencyLimitRampStep: 2000
+    concurrencyLimitRampReset: true
+    concurrencyLimitRampPeriod: 300s
+    requestLimitInit: 1
+    requestLimit: 10001
+    requestLimitRampStep: 2000
+    requestLimitRampReset: true
     requestLimitRampPeriod: 300s
-    requestLimitWindow: 10s
 
 server:
   log: ort=debug
