@@ -13,7 +13,7 @@ members = [
 name = "ort"
 version = "0.2.9"
 authors = ["Oliver Gould <ver@buoyant.io>"]
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 description = "A proxy load-testing harness"
 

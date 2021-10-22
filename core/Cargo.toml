@@ -2,7 +2,7 @@
 name = "ort-core"
 version = "0.2.9"
 authors = ["Oliver Gould <ver@buoyant.io>"]
-edition = "2018"
+edition = "2021"
 license = "Apache-2.0"
 description = "Core types for the Ort proxy load-testing harness"
 
