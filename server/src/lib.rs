@@ -13,7 +13,7 @@ use tokio::signal::{
     ctrl_c,
     unix::{signal, SignalKind},
 };
-use tracing::{debug, instrument};
+use tracing::{debug, info_span, instrument, Instrument};
 
 #[derive(StructOpt)]
 #[structopt(name = "server", about = "Load target")]
@@ -39,9 +39,21 @@ impl Cmd {
         let replier = Replier::new(self.response_latency);
 
         let (close, closed) = drain::channel();
-        tokio::spawn(grpc::Server::new(replier.clone()).serve(self.grpc_addr, closed.clone()));
-        tokio::spawn(http::Server::new(replier.clone()).serve(self.http_addr, closed.clone()));
-        tokio::spawn(tcp::Server::new(replier).serve(self.tcp_addr, closed));
+        tokio::spawn(
+            grpc::Server::new(replier.clone())
+                .serve(self.grpc_addr, closed.clone())
+                .instrument(info_span!("grpc")),
+        );
+        tokio::spawn(
+            http::Server::new(replier.clone())
+                .serve(self.http_addr, closed.clone())
+                .instrument(info_span!("http")),
+        );
+        tokio::spawn(
+            tcp::Server::new(replier)
+                .serve(self.tcp_addr, closed)
+                .instrument(info_span!("tcp")),
+        );
 
         tokio::spawn(admin(self.admin_addr));
 

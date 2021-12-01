@@ -22,6 +22,7 @@ impl<O: Ort> Server<O> {
     pub async fn serve(self, addr: SocketAddr, drain: Drain) -> Result<(), Error> {
         let mut serving = FuturesUnordered::new();
         let lis = tokio::net::TcpListener::bind(addr).await?;
+        tracing::info!("Listening on {}", addr);
 
         tokio::pin! {
             let closed = drain.clone().signaled();

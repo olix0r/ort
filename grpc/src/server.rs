@@ -28,6 +28,7 @@ impl<O: Ort + Sync> Server<O> {
                 .add_service(ort_server::OrtServer::new(self))
                 .serve_with_shutdown(addr, closed.map(|_| ()));
         }
+        tracing::info!("Listening on {}", addr);
         tokio::select! {
             _ = (&mut srv) => {}
             handle = drain.signaled() => {
