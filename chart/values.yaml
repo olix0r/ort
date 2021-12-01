@@ -28,7 +28,7 @@ load:
     concurrencyLimitRampReset: true
     concurrencyLimitRampPeriod: 300s
     requestLimitInit: 1
-    requestLimit: 1000001
+    requestLimit: "1000001"
     requestLimitRampStep: 10000
     requestLimitRampReset: true
     requestLimitRampPeriod: 300s
