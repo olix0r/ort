@@ -29,44 +29,70 @@ impl ConcurrencyRamp {
 async fn run(ramp: Ramp, weak: Weak<Semaphore>) {
     // Figure out how frequently to increase the concurrency and create a timer.
     debug_assert!(ramp.max > ramp.min && ramp.min_step != 0);
-    let updates = ((ramp.max - ramp.min) / ramp.min_step) + 1;
+    let updates = (ramp.max - ramp.min) / ramp.min_step;
+
+    let mut interval = {
+        let t = time::Duration::from_millis(ramp.period.as_millis() as u64 / updates as u64);
+        time::interval_at(time::Instant::now() + t, t)
+    };
+
+    // The concurrency is already at the minimum. Wait for the timer to fire and increment it until
+    // we're at the maximum concurrency.
+    let mut concurrency = ramp.min;
+
+    // Spend the first tick at the initial concurrency.
+    interval.tick().await;
 
     loop {
-        let mut interval = {
-            let t = time::Duration::from_millis(ramp.period.as_millis() as u64 / updates as u64);
-            time::interval_at(time::Instant::now() + t, t)
-        };
-
-        // The concurrency is already at the minimum. Wait for the timer to fire and increment it until
-        // we're at the maximum concurrency.
-        let mut concurrency = ramp.min;
-
         for _ in 0..updates {
-            interval.tick().await;
-            match weak.upgrade() {
+            let sem = match weak.upgrade() {
+                Some(sem) => sem,
                 None => {
                     debug!("Terminating task");
                     return;
                 }
-                Some(sem) => {
-                    sem.add_permits(ramp.min_step);
-                    concurrency += ramp.min_step;
-                    debug!(%concurrency, "Increased concurrency");
-                }
-            }
-        }
-        if concurrency != ramp.max {
+            };
+            sem.add_permits(ramp.min_step);
+            concurrency += ramp.min_step;
+            debug!(%concurrency, "Increased concurrency");
             interval.tick().await;
-            if let Some(sem) = weak.upgrade() {
-                sem.add_permits(ramp.max - concurrency);
-                concurrency += ramp.max - concurrency;
-                debug!(%concurrency, "Increased concurrency");
-            }
+        }
+
+        if concurrency < ramp.max {
+            let sem = match weak.upgrade() {
+                Some(sem) => sem,
+                None => {
+                    debug!("Terminating task");
+                    return;
+                }
+            };
+            sem.add_permits(ramp.max - concurrency);
+            concurrency = ramp.max;
+            debug!(%concurrency, "Increased concurrency");
+            interval.tick().await;
         }
 
         if !ramp.reset {
             return;
         }
+        concurrency = ramp.min;
+        debug!(%concurrency, "Resetting concurrency");
+        let sem = match weak.upgrade() {
+            Some(sem) => sem,
+            None => {
+                debug!("Terminating task");
+                return;
+            }
+        };
+        let permits = match sem.acquire_many((ramp.max - ramp.min) as u32).await {
+            Ok(p) => p,
+            Err(e) => {
+                debug!(%e, "Failed to acquire permits");
+                return;
+            }
+        };
+        permits.forget();
+        interval.tick().await;
     }
 }
 
