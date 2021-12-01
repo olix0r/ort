@@ -1,7 +1,7 @@
-image: ghcr.io/olix0r/ort:v0.2.8
+image: ghcr.io/olix0r/ort:v0.2.11
 
-# # If the protocol ports are unset (or set to 0), then the load deployment won't be created and
-# the service won't expose the port.
+# If the protocol ports are unset (or set to 0), then the load deployment won't
+# be created and the service won't expose the port.
 protocols:
   grpc:
     enabled: false
