@@ -5,7 +5,7 @@ use tokio::{
     sync::{OwnedSemaphorePermit, Semaphore},
     time,
 };
-use tracing::debug;
+use tracing::{debug, info};
 
 #[derive(Clone)]
 pub(crate) struct ConcurrencyRamp(Arc<Semaphore>);
@@ -16,8 +16,11 @@ impl ConcurrencyRamp {
     pub(crate) fn spawn(ramp: Ramp) -> Self {
         let sem = Arc::new(Semaphore::new(ramp.init()));
         if ramp.init() != ramp.max {
+            info!(?ramp, "Spawning concurrency limit");
             let weak = Arc::downgrade(&sem);
             tokio::spawn(run(ramp, weak));
+        } else {
+            info!(limit = %ramp.init(), "Fixed concurrency limit");
         }
         Self(sem)
     }

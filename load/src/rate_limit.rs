@@ -2,7 +2,7 @@ use super::Ramp;
 use ort_core::limit;
 use std::sync::{Arc, Weak};
 use tokio::{sync::Semaphore, time};
-use tracing::debug;
+use tracing::{debug, info, trace};
 
 #[derive(Clone)]
 pub(crate) struct RateLimit(Arc<Semaphore>);
@@ -14,12 +14,14 @@ pub struct Permit(Option<tokio::sync::OwnedSemaphorePermit>);
 impl RateLimit {
     pub fn spawn(ramp: Ramp, window: time::Duration) -> Option<Self> {
         if ramp.max > 0 && window > time::Duration::new(0, 0) {
+            info!(?ramp, ?window, "Spawning rate limit",);
             // Initialize the semaphore permitting requests.
             let sem = Arc::new(Semaphore::new(ramp.init()));
             let weak = Arc::downgrade(&sem);
             tokio::spawn(run(ramp, window, weak));
             Some(Self(sem))
         } else {
+            info!("No rate limit");
             None
         }
     }
@@ -41,10 +43,12 @@ fn step(ramp: Ramp, interval: time::Duration) -> usize {
 async fn run(ramp: Ramp, window: time::Duration, weak: Weak<Semaphore>) {
     let mut limit = ramp.init();
     let step = step(ramp, window).max(ramp.min_step);
+    trace!(?step);
 
     let mut interval = time::interval_at(time::Instant::now() + window, window);
     loop {
         // Wait for the window to expire before adding more permits.
+        trace!(?window, "Waiting for tick");
         interval.tick().await;
 
         if limit < ramp.max {

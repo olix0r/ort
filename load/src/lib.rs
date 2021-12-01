@@ -7,11 +7,9 @@ mod rate_limit;
 mod runner;
 mod timeout;
 
-use crate::concurrency_ramp::ConcurrencyRamp;
-
 use self::{
-    admin::Admin, metrics::MakeMetrics, rate_limit::RateLimit, runner::Runner,
-    timeout::MakeRequestTimeout,
+    admin::Admin, concurrency_ramp::ConcurrencyRamp, metrics::MakeMetrics, rate_limit::RateLimit,
+    runner::Runner, timeout::MakeRequestTimeout,
 };
 use anyhow::{anyhow, bail, Result};
 use ort_core::{latency, parse_duration, Distribution, Error, MakeOrt, Ort, Reply, Spec};
@@ -27,7 +25,7 @@ use tokio::{
     },
     time::Duration,
 };
-use tracing::{debug_span, Instrument};
+use tracing::{debug_span, info, Instrument};
 
 #[derive(StructOpt)]
 #[structopt(name = "load", about = "Load generator")]
@@ -143,6 +141,7 @@ impl Cmd {
             )?;
             Some(ConcurrencyRamp::spawn(ramp))
         } else {
+            info!("No concurrency limit");
             None
         };
 
