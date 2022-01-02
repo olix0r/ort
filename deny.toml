@@ -34,11 +34,11 @@ multiple-versions = "deny"
 wildcards = "allow"
 highlight = "all"
 deny = []
-skip = [
-    # Pulled in by clap
-    { name = "ansi_term", version = "0.11.0" },
+skip = []
+skip-tree = [
+    # Waiting on a release that updates itoa to v1.
+    { name = "hyper" },
 ]
-skip-tree = []
 
 [sources]
 unknown-registry = "deny"
