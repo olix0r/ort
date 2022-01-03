@@ -3,19 +3,20 @@
 The project consists of a client and server that are ready to be deployed in
 Kubernetes, especially for testing [Linkerd](https://linkerd.io).
 
-```
+```text
 ort 0.2.11
 Load harness
 
 USAGE:
-    ort <SUBCOMMAND>
+    ort [OPTIONS] <SUBCOMMAND>
 
-FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
+OPTIONS:
+    -h, --help                 Print help information
+        --threads <THREADS>    
+    -V, --version              Print version information
 
 SUBCOMMANDS:
-    help      Prints this message or the help of the given subcommand(s)
+    help      Print this message or the help of the given subcommand(s)
     load      Load generator
     server    Load target
 ```

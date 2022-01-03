@@ -12,6 +12,7 @@ grpc-fmt = ["ort-grpc/rustfmt"]
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
+clap = { version = "3", features = ["derive"] }
 futures = { version = "0.3", default-features = false }
 http = "0.2"
 hyper = { version = "0.14", default-features = false }
@@ -22,6 +23,5 @@ ort-tcp = { version = "0.2", path = "../tcp" }
 linkerd-metrics = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main", features = ["summary"] }
 parking_lot = "0.11"
 rand = "0.8"
-structopt = "0.3"
 tokio = { version = "1", features = ["macros", "signal", "sync", "time"] }
 tracing = "0.1"

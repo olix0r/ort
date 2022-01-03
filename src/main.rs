@@ -1,25 +1,25 @@
 #![deny(warnings, rust_2018_idioms)]
 
+use clap::Parser;
 use ort_load as load;
 use ort_server as server;
-use structopt::StructOpt;
 use tokio::runtime as rt;
 
 #[cfg(all(target_os = "linux", target_arch = "x86_64", target_env = "gnu"))]
 #[global_allocator]
 static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-#[derive(StructOpt)]
-#[structopt(about = "Load harness")]
+#[derive(Parser)]
+#[clap(about = "Load harness", version)]
 struct Ort {
     #[structopt(long)]
     threads: Option<usize>,
 
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     cmd: Cmd,
 }
 
-#[derive(StructOpt)]
+#[derive(Parser)]
 enum Cmd {
     Load(load::Cmd),
     Server(server::Cmd),
@@ -28,7 +28,7 @@ enum Cmd {
 fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
     tracing_subscriber::fmt::init();
 
-    let Ort { threads, cmd } = Ort::from_args();
+    let Ort { threads, cmd } = Ort::parse();
 
     let threads = threads.unwrap_or_else(num_cpus::get);
     let rt = rt::Builder::new_multi_thread()

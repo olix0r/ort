@@ -3,34 +3,34 @@
 mod replier;
 
 use self::replier::Replier;
+use clap::Parser;
 use ort_core::latency;
 use ort_grpc::server as grpc;
 use ort_http::server as http;
 use ort_tcp::server as tcp;
 use std::net::SocketAddr;
-use structopt::StructOpt;
 use tokio::signal::{
     ctrl_c,
     unix::{signal, SignalKind},
 };
 use tracing::{debug, info_span, instrument, Instrument};
 
-#[derive(StructOpt)]
-#[structopt(name = "server", about = "Load target")]
+#[derive(Parser)]
+#[clap(name = "server", about = "Load target")]
 pub struct Cmd {
-    #[structopt(short, long, default_value = "0.0.0.0:9090")]
+    #[clap(short, long, default_value = "0.0.0.0:9090")]
     admin_addr: SocketAddr,
 
-    #[structopt(short, long, default_value = "0.0.0.0:8070")]
+    #[clap(short, long, default_value = "0.0.0.0:8070")]
     grpc_addr: SocketAddr,
 
-    #[structopt(short, long, default_value = "0.0.0.0:8080")]
+    #[clap(short, long, default_value = "0.0.0.0:8080")]
     http_addr: SocketAddr,
 
-    #[structopt(short, long, default_value = "0.0.0.0:8090")]
+    #[clap(short, long, default_value = "0.0.0.0:8090")]
     tcp_addr: SocketAddr,
 
-    #[structopt(long, default_value = "0")]
+    #[clap(long, default_value = "0")]
     response_latency: latency::Distribution,
 }
 
