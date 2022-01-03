@@ -12,12 +12,12 @@ use self::{
     runner::Runner, timeout::MakeRequestTimeout,
 };
 use anyhow::{anyhow, bail, Result};
+use clap::Parser;
 use ort_core::{latency, parse_duration, Distribution, Error, MakeOrt, Ort, Reply, Spec};
 use ort_grpc::client::MakeGrpc;
 use ort_http::client::MakeHttp;
 use ort_tcp::client::MakeTcp;
 use std::{fmt::Debug, net::SocketAddr, str::FromStr, sync::Arc};
-use structopt::StructOpt;
 use tokio::{
     signal::{
         ctrl_c,
@@ -27,61 +27,61 @@ use tokio::{
 };
 use tracing::{debug_span, info, Instrument};
 
-#[derive(StructOpt)]
-#[structopt(name = "load", about = "Load generator")]
+#[derive(Parser)]
+#[clap(name = "load", about = "Load generator")]
 pub struct Cmd {
-    #[structopt(long, parse(try_from_str), default_value = "0.0.0.0:8000")]
+    #[clap(long, parse(try_from_str), default_value = "0.0.0.0:8000")]
     admin_addr: SocketAddr,
 
-    #[structopt(long)]
+    #[clap(long)]
     clients: Option<usize>,
 
-    #[structopt(long)]
+    #[clap(long)]
     concurrency_limit_init: Option<usize>,
 
-    #[structopt(long, parse(try_from_str = parse_duration), default_value = "0s")]
+    #[clap(long, parse(try_from_str = parse_duration), default_value = "0s")]
     concurrency_limit_ramp_period: Duration,
 
-    #[structopt(long, default_value = "1")]
+    #[clap(long, default_value = "1")]
     concurrency_limit_ramp_step: usize,
 
-    #[structopt(long)]
+    #[clap(long)]
     concurrency_limit_ramp_reset: bool,
 
-    #[structopt(long)]
+    #[clap(long)]
     concurrency_limit: Option<usize>,
 
-    #[structopt(long)]
+    #[clap(long)]
     request_limit_init: Option<usize>,
 
-    #[structopt(long, parse(try_from_str = parse_duration), default_value = "0s")]
+    #[clap(long, parse(try_from_str = parse_duration), default_value = "0s")]
     request_limit_ramp_period: Duration,
 
-    #[structopt(long, default_value = "1")]
+    #[clap(long, default_value = "1")]
     request_limit_ramp_step: usize,
 
-    #[structopt(long)]
+    #[clap(long)]
     request_limit_ramp_reset: bool,
 
-    #[structopt(long, default_value = "0")]
+    #[clap(long, default_value = "0")]
     request_limit: usize,
 
-    #[structopt(long, parse(try_from_str = parse_duration), default_value = "1s")]
+    #[clap(long, parse(try_from_str = parse_duration), default_value = "1s")]
     request_limit_window: Duration,
 
-    #[structopt(long, parse(try_from_str = parse_duration), default_value = "10s")]
+    #[clap(long, parse(try_from_str = parse_duration), default_value = "10s")]
     request_timeout: Duration,
 
-    #[structopt(long, parse(try_from_str = parse_duration), default_value = "1s")]
+    #[clap(long, parse(try_from_str = parse_duration), default_value = "1s")]
     connect_timeout: Duration,
 
-    #[structopt(long)]
+    #[clap(long)]
     total_requests: Option<usize>,
 
-    #[structopt(long, default_value = "0")]
+    #[clap(long, default_value = "0")]
     response_latency: latency::Distribution,
 
-    #[structopt(long, default_value = "0")]
+    #[clap(long, default_value = "0")]
     response_size: Distribution,
 
     target: Target,

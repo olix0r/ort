@@ -12,6 +12,7 @@ grpc-fmt = ["ort-grpc/rustfmt"]
 [dependencies]
 async-trait = "0.1"
 bytes = "1"
+clap = { version = "3", features = ["derive"] }
 drain = "0.1"
 futures = { version = "0.3", default-features = false }
 hyper = { version = "0.14", default-features = false, features = ["http1", "server", "tcp"] }
@@ -20,7 +21,6 @@ ort-grpc = { version = "0.2", path = "../grpc", features = ["server"] }
 ort-http = { version = "0.2", path = "../http" }
 ort-tcp = { version = "0.2", path = "../tcp" }
 rand =  "0.8"
-structopt = "0.3"
 tokio = { version = "1", features = ["macros", "signal", "time"] }
 tonic = { version = "0.6", default-features = false }
 tracing = "0.1"
