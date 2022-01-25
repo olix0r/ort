@@ -1,9 +1,9 @@
 name: Rust PR
 
 on:
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
   pull_request: {}
 
 jobs:
