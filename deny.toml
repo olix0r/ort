@@ -34,7 +34,10 @@ multiple-versions = "deny"
 wildcards = "allow"
 highlight = "all"
 deny = []
-skip = []
+skip = [
+    # Waiting on a new release of prost
+    { name = "heck" }
+]
 skip-tree = [
     # Waiting on a release that updates itoa to v1.
     { name = "hyper" },
