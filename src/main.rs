@@ -20,6 +20,7 @@ struct Ort {
 }
 
 #[derive(Parser)]
+#[allow(clippy::large_enum_variant)]
 enum Cmd {
     Load(load::Cmd),
     Server(server::Cmd),
