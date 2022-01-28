@@ -10,13 +10,6 @@ use tokio::{
 use tokio_util::codec::{Decoder, Encoder};
 use tracing::{debug, debug_span, error, info, trace, Instrument};
 
-#[derive(Default, Debug)]
-pub struct Muxer<E, D> {
-    buffer_capacity: usize,
-    encoder: FramedEncode<E>,
-    decoder: FramedDecode<D>,
-}
-
 #[derive(Debug)]
 pub struct Frame<T> {
     pub id: u64,
