@@ -21,7 +21,7 @@ ort-grpc = { version = "0.2", path = "../grpc", features = ["client"] }
 ort-http = { version = "0.2", path = "../http" }
 ort-tcp = { version = "0.2", path = "../tcp" }
 linkerd-metrics = { git = "https://github.com/linkerd/linkerd2-proxy", branch = "main", features = ["summary"] }
-parking_lot = "0.11"
+parking_lot = "0.12"
 rand = "0.8"
 tokio = { version = "1", features = ["macros", "signal", "sync", "time"] }
 tracing = "0.1"
