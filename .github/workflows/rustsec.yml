@@ -1,0 +1,19 @@
+name: RUSTSEC
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/rustsec.yml
+  schedule:
+    - cron: '0 0 * * *'
+
+permissions:
+  issues: write
+
+jobs:
+  rustsecbot:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
+      - uses: olix0r/rustsecbot@v1
