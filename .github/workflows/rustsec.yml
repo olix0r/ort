@@ -1,6 +1,11 @@
 name: RUSTSEC
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - Cargo.lock
   pull_request:
     paths:
       - .github/workflows/rustsec.yml
