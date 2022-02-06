@@ -7,6 +7,15 @@ updates:
       day: "sunday"
     allow:
       - dependency-type: "all"
+    ignore:
+      - dependency-name: "futures-channel"
+      - dependency-name: "futures-core"
+      - dependency-name: "futures-io"
+      - dependency-name: "futures-sink"
+      - dependency-name: "futures-task"
+      - dependency-name: "futures-util"
+      - dependency-name: "tracing-attributes"
+      - dependency-name: "tracing-core"
 
   - package-ecosystem: github-actions
     directory: "/"
