@@ -8,6 +8,7 @@ updates:
     allow:
       - dependency-type: "all"
     ignore:
+      - dependency-name: "clap_derive"
       - dependency-name: "futures-channel"
       - dependency-name: "futures-core"
       - dependency-name: "futures-io"
