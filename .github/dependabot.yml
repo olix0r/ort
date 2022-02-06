@@ -15,6 +15,7 @@ updates:
       - dependency-name: "futures-sink"
       - dependency-name: "futures-task"
       - dependency-name: "futures-util"
+      - dependency-name: "prost-derive"
       - dependency-name: "tracing-attributes"
       - dependency-name: "tracing-core"
 
