@@ -13,7 +13,7 @@ drain = "0.1"
 futures = { version = "0.3", default-features = false, features = ["std"] }
 ort-core = { version = "0.2", path = "../core" }
 tokio = { version = "1", features = ["io-util", "macros", "net", "signal", "sync", "time"] }
-tokio-util = { version = "0.6", features = ["codec"] }
+tokio-util = { version = "0.7", features = ["codec"] }
 tracing = "0.1"
 
 [dev-dependencies]
