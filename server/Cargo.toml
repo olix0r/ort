@@ -22,5 +22,5 @@ ort-http = { version = "0.2", path = "../http" }
 ort-tcp = { version = "0.2", path = "../tcp" }
 rand =  "0.8"
 tokio = { version = "1", features = ["macros", "signal", "time"] }
-tonic = { version = "0.6", default-features = false }
+tonic = { version = "0.7", default-features = false }
 tracing = "0.1"
